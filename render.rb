@@ -15,6 +15,7 @@ class Window
     @window << title
     @window.refresh
     @current = @window.derwin(21, 76, 2, 2)
+    @current.scrollok(true)
   end
 
   def blank
@@ -24,6 +25,16 @@ class Window
 
   def refresh
     @current.refresh
+  end
+
+  def say(key_or_text, text_with_key = nil, &block)
+    key = key_or_text.to_s[0].downcase
+    text = text_with_key || key_or_text
+    choice(key, "\"#{text}\"") do
+      newline
+      dialogue 'You', text
+      block&.call
+    end
   end
 
   def choice(key_or_text, text_with_key = nil, &block)
@@ -40,7 +51,7 @@ class Window
 
   def dialogue(name, text)
     @current << name << ': '
-    line(text, margin: name.size + 2)
+    para(text, margin: name.size + 2)
   end
 
   def choose!
@@ -49,15 +60,20 @@ class Window
       @current << @choices.keys.sort.join(', ') << '> '
       c = @current.getch.to_s.downcase
       if @choices.key?(c)
-        @choices[c].call
+        newline
+        choice = @choices[c]
         @choices.clear
+        choice.call
       else
-        dialog = @current.derwin(3, 25, 2, 2)
-        dialog << "INVALID CHOICE: #{c}"
-        dialog.box
-        dialog.getch
-        dialog.close
-        @current.redraw
+        # why can't I show a subwindow without it mangling what's underneath...
+        # dialog = @current.derwin(3, 25, 2, 2)
+        # dialog << "INVALID CHOICE: #{c}"
+        # dialog.box
+        # dialog.getch
+        # dialog.close
+        # @current.redraw
+
+        line "Invalid option #{c}"
       end
     end
   end
@@ -69,7 +85,7 @@ class Window
       word = words.shift
       line += word
 
-      if words.empty? || words.first.size + line.size + margin > width
+      if words.empty? || words.first.size + line.size + margin >= width
         @current.setpos(@current.cury, margin)
 
         # TODO: hack for curses inserting newlines itself, grr
@@ -93,7 +109,8 @@ class Window
   end
 
   def newline
-    @current.setpos(@current.cury + 1, 0)
+    # @current.setpos(@current.cury + 1, 0)
+    @current << "\n" # or else scrolling doesn't work...
   end
 
   # a dramatic pause for effect

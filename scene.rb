@@ -4,7 +4,6 @@ class SceneOwner
   attr_reader :window, :player
 
   def initialize(window)
-    # TODO: player probably shouldn't be here
     @player = Player.new
     @scenes = []
     @window = window
@@ -45,7 +44,7 @@ class Scene
   extend Forwardable
   attr_accessor :owner
 
-  def_delegators :window, :choice, :dialogue, :choose!, :line, :para, :newline, :pause
+  def_delegators :window, :choice, :dialogue, :say, :choose!, :line, :para, :newline, :pause
   def_delegators :@owner, :proceed_to, :replace_to, :end_scene
 
   def window
@@ -54,5 +53,14 @@ class Scene
 
   def player
     @owner.player
+  end
+
+  # only called on the initial entry to a scene, not subsequent re-enters
+  def first_enter
+    @did_first_on_enter ||= false
+    return if @did_first_on_enter
+
+    yield
+    @did_first_on_enter = true
   end
 end

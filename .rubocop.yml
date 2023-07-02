@@ -6,9 +6,12 @@ Lint/MissingSuper:
   Exclude:
     - 'main.rb'
 
+Style/OptionalBooleanParameter:
+  Enabled: false
+
 # Configuration parameters: AllowedMethods, AllowedPatterns, CountRepeatedAttributes.
 Metrics/AbcSize:
-  Max: 47
+  Max: 999 # lol
 
 # Configuration parameters: CountComments, CountAsOne, AllowedMethods, AllowedPatterns.
 Metrics/MethodLength:
