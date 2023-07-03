@@ -4,7 +4,8 @@ class SceneOwner
   attr_reader :window, :player
 
   def initialize(window)
-    @player = Player.new
+    # TODO: player should be part of larger state maybe?
+    @player = Player.new(name: 'Doug', hp: 15, attack: 7, defense: 4, cash: 25)
     @scenes = []
     @window = window
     # @window.refresh

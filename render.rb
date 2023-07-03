@@ -8,7 +8,7 @@ Curses.noecho
 class Window
   def initialize
     # centered box in terminal, exposing a smaller subwindow that scenes can draw into
-    title = '~~~  SPIX IV  ~~~'
+    title = '<~~~  SPIX IV  ~~~>'
     @window = Curses::Window.new(25, 80, (Curses.lines - 25) / 2, (Curses.cols - 80) / 2)
     @window.box
     @window.setpos(0, (@window.maxx - title.size) / 2)

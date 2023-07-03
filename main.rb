@@ -2,20 +2,12 @@ require 'curses'
 
 require './scene'
 require './render'
+require './foes'
 
-class Combatant
-  attr_accessor :name, :hp, :atk, :blk, :max_hp
 
-  def initialize(name:, hp:, atk:, blk:, max_hp: hp)
-    @name = name
-    @hp = hp
-    @atk = atk
-    @blk = blk
-    @max_hp = max_hp
-  end
-
-  def attack(other)
-    dmg = rand(atk) - other.blk
+module Combatant
+  def strike(other)
+    dmg = rand(attack) - other.defense
     dmg = 1 if dmg < 1
     other.hp -= dmg
     dmg
@@ -26,19 +18,30 @@ class Combatant
   end
 end
 
-class Player < Combatant
-  attr_accessor :cash
+Foe = Struct.new('Foe', :name, :attack, :defense, :hp, :weapon, :attack_verb, :finisher, :exp, :cash, keyword_init: true) do
+  attr_accessor :max_hp
+  include Combatant
 
-  def initialize
-    super(name: 'Doug', hp: 15, atk: 7, blk: 4)
-    @cash = 25
+  def initialize(args)
+    super(**args)
+    @max_hp = hp
+  end
+end
+
+Player = Struct.new('Player', :name, :attack, :defense, :hp, :max_hp, :cash) do
+  attr_accessor :max_hp
+  include Combatant
+
+  def initialize(args)
+    super(**args)
+    @max_hp = hp
   end
 
   def pay(amount)
-    @cash -= amount
-    return unless @cash.negative?
-
-    @cash = 0
+    cash -= amount
+    if cash.negative?
+      cash = 0
+    end
   end
 end
 
@@ -46,17 +49,23 @@ class Combat < Scene
   attr_reader :foe
 
   def initialize(foe)
-    @foe = foe
+    if foe.is_a? Combatant
+      @foe = foe
+    elsif foe.is_a? Symbol
+      @foe = Foes.by_id(foe)
+    else
+      raise "what is this: #{foe}"
+    end
   end
 
   def enter
     para "You have encountered '#{foe.name}'!"
     line "#{player.name}'s HP:    #{player.hp} / #{player.max_hp}", margin: 4
-    line "#{foe.name}'s HP:   #{foe.hp} / #{foe.max_hp}", margin: 4
+    line "#{foe.name.capitalize}'s HP:   #{foe.hp} / #{foe.max_hp}", margin: 4
     newline
     para 'Your next action?'
     choice 'Attack!' do
-      dmg = player.attack(foe)
+      dmg = player.strike(foe)
       line "You attack, dealing #{dmg} damage!"
     end
     choice 'Run!' do
@@ -65,17 +74,17 @@ class Combat < Scene
     choose!
 
     if foe.slain?
-      line "You have defeated #{foe.name}!"
+      para foe.finisher
       pause
       end_scene
     else
-      dmg = foe.attack(player)
+      dmg = foe.strike(player)
 
       if player.slain?
-        line "#{foe.name} delivers a killing blow of #{dmg} damage, and the world begins to darken..."
+        line "#{foe.name.capitalize} delivers a killing blow of #{dmg} damage, and the world begins to darken..."
         proceed_to :game_over
       else
-        line "#{foe.name} hits you for #{dmg} damage!"
+        line "#{foe.name.capitalize} #{foe.attack_verb} you with its #{foe.weapon} for #{dmg} damage!"
       end
       pause
     end
@@ -128,15 +137,17 @@ class TownCautious < Scene
     pause
     para 'As he shrugs off the kick, unfurls to his full height and squares you up, you suspect that was a mistake.'
     pause
+
+    Foes.by_id(:bruiser)
+
     replace_to :winnipeg
     proceed_to :tavern, true
-    proceed_to :combat, Combatant.new(name: 'Bruiser', hp: 20, atk: 1, blk: 3, max_hp: 30)
+    proceed_to :combat, :bruiser
   end
 end
 
 class TownCasual < Scene
   def enter
-    bruiser = Combatant.new(name: 'Bruiser', hp: 30, atk: 1, blk: 3)
     para 'Completely confident, you walk toward the shanty, drawing more than a few quick glances from folk peeking out behind drawn curtains.'
     pause
     para 'You plant your boots on the porch of what must pass for a tavern in this hovel, grab a shovel leaning against the railing, and cry out, "Dylan! Show yourself!"'
@@ -150,7 +161,7 @@ class TownCasual < Scene
     player.atk += 5
 
     replace_to :winnipeg, :tavern
-    proceed_to :combat, bruiser
+    proceed_to :combat, :bruiser
   end
 end
 
@@ -308,12 +319,7 @@ class AssiniboineForest < Scene
     end
 
     choice :i, 'Investigate' do
-      foes = [
-        Combatant.new(name: 'mutated dog', hp: 5, atk: 3, blk: 1),
-        Combatant.new(name: 'elven boy', hp: 3, atk: 5, blk: 1),
-        Combatant.new(name: 'twigged out grandpa', hp: 5, atk: 3, blk: 1),
-        Combatant.new(name: 'scavenger', hp: 7, atk: 5, blk: 3)
-      ]
+      foes = [:mutated_dog, :elf, :grandpa, :scavenger]
       proceed_to :combat, foes[rand(foes.size)]
     end
     choice :c, 'Camp' do

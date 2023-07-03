@@ -1,0 +1,6 @@
+id,name,attack,defense,hp,weapon,attack_verb,finisher,exp,cash,drops
+bruiser,bruiser,5,3,30,fists,punches,"You finally land a decisive blow, knocking the bruiser onto a table, flinging glasses wildly around the bar",5,10,
+elf,elven boy,5,1,5,blow gun,shoots,"You stomp the boy beneath your boot, while reassuring yourself you’re a good person",3,5,
+grandpa,twigged out grandpa,7,1,3,used syringe,stabs,"You pry the flailing old man off of you, and realize he’s dead before he hits the ground",4,10,full_syringe
+scavenger,scavenger,10,5,15,recurve bow,shoots,"You close within the scavenger’s guard and slam the bow forward into his skull, cracking it",10,25,
+mutated_dog,mutated dog,7,1,9,foaming mouth,bites,"With a howl, you put the beast out of its misery. Looking back, you aren’t sure who was doing the howling.",7,0,
