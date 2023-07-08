@@ -3,14 +3,51 @@ require 'curses'
 require './scene'
 require './render'
 require './foes'
-
+require './roll'
 
 module Combatant
+  def skill_check(skill)
+    target = self[skill]
+    result = Dice.new(6, times: 3).roll
+    [result.total <= target, result]
+  end
+
+  def contest(other, skill)
+    self_succ, self_result = skill_check(skill)
+    return false unless self_succ
+
+    other_succ, other_result = other.skill_check(skill)
+    return true unless other_succ
+    
+    # TODO: extract margin of success calc
+    self_margin = self[skill] - self_result.total
+    other_margin = other[skill] - other_result.total
+
+    return self_margin > other_margin
+  end
+
   def strike(other)
-    dmg = rand(attack) - other.defense
-    dmg = 1 if dmg < 1
-    other.hp -= dmg
-    dmg
+    hit, martial_roll = self.skill_check(:martial)
+    return [:miss, martial_roll] unless hit
+
+    evaded, evade_roll = other.skill_check(:evasion)
+    return [:evade, evade_roll] if evaded
+
+    dmg_roll = weapon_dmg.roll
+    other.injure(dmg_roll.total)
+    return [:hit, dmg_roll]
+  end
+
+  def injure(dmg)
+    self.hp -= dmg
+    self.hp = 0 if self.hp < 0
+  end
+
+  def heal(amount)
+    self.hp += amount
+    if hp > max_hp
+      self.hp = max_hp
+    end
   end
 
   def slain?
@@ -18,30 +55,48 @@ module Combatant
   end
 end
 
-Foe = Struct.new('Foe', :name, :attack, :defense, :hp, :weapon, :attack_verb, :finisher, :exp, :cash, keyword_init: true) do
-  attr_accessor :max_hp
-  include Combatant
+# TODO: move player weapon+weapon_dmg to inventory eventually
+attrs = [:name, :cash, :hp, :max_hp, :weapon, :weapon_dmg]
+skills = [:martial, :evasion]
+foe_fields = [:exp, :attack_verb, :finisher, :tags] + attrs + skills 
 
+Foe = Struct.new('Foe', *foe_fields, keyword_init: true) do
+  include Combatant
+  attr_reader :max_hp
+  
   def initialize(args)
     super(**args)
     @max_hp = hp
+  end
+
+  def tagged?(tag)
+    tags.include?(tag)
   end
 end
 
-Player = Struct.new('Player', :name, :attack, :defense, :hp, :max_hp, :cash) do
-  attr_accessor :max_hp
+player_fields = attrs + skills
+
+Player = Struct.new('Player', *player_fields, keyword_init: true) do
   include Combatant
 
-  def initialize(args)
-    super(**args)
-    @max_hp = hp
+  def pay(amount)
+    self.cash -= amount
+    if cash.negative?
+      self.cash = 0
+    end
   end
 
-  def pay(amount)
-    cash -= amount
-    if cash.negative?
-      cash = 0
-    end
+  def self.fresh_off_the_boat
+    new(
+      name: "Nobody",
+      cash: 25,
+      hp: 15,
+      max_hp: 15,
+      martial: 12,
+      evasion: 10,
+      weapon: "Fists",
+      weapon_dmg: d(4)
+    )
   end
 end
 
@@ -58,18 +113,38 @@ class Combat < Scene
     end
   end
 
+  def foe_name
+    foe.name.capitalize
+  end
+
   def enter
     para "You have encountered '#{foe.name}'!"
     line "#{player.name}'s HP:    #{player.hp} / #{player.max_hp}", margin: 4
-    line "#{foe.name.capitalize}'s HP:   #{foe.hp} / #{foe.max_hp}", margin: 4
+    line "#{foe_name}'s HP:   #{foe.hp} / #{foe.max_hp}", margin: 4
     newline
     para 'Your next action?'
     choice 'Attack!' do
-      dmg = player.strike(foe)
-      line "You attack, dealing #{dmg} damage!"
+      result, roll = player.strike(foe)
+      case result
+      when :hit
+        line "You attack, dealing #{roll.total} damage!"
+      when :miss
+        line "You miss!"
+      when :evade
+        line "#{foe_name} evades!"
+      end
     end
     choice 'Run!' do
-      line 'You run?'
+      did_run, _ = player.contest(foe, :evasion)
+      
+      if did_run && !foe.tagged?(:plot)
+        line "You run in panic stricken fear!"
+        pause
+        end_scene
+        return
+      else
+        line "You scramble for an opportunity to escape, but #{@foe.name} gives none."
+      end
     end
     choose!
 
@@ -78,13 +153,19 @@ class Combat < Scene
       pause
       end_scene
     else
-      dmg = foe.strike(player)
-
+      result, roll = foe.strike(player)
+      case result
+      when :hit
+        line "#{foe_name} #{foe.attack_verb} you with its #{foe.weapon}, dealing #{roll.total} damage!"
+      when :miss
+        line "#{foe_name} #{foe.attack_verb}, but misses!"
+      when :evade
+        line "#{foe_name} #{foe.attack_verb}, but you evade!"
+      end
+      
       if player.slain?
-        line "#{foe.name.capitalize} delivers a killing blow of #{dmg} damage, and the world begins to darken..."
-        proceed_to :game_over
-      else
-        line "#{foe.name.capitalize} #{foe.attack_verb} you with its #{foe.weapon} for #{dmg} damage!"
+        para 'The world begins to darken...'
+        proceed_to :game_over 
       end
       pause
     end
@@ -94,6 +175,10 @@ end
 class Camp < Scene
   def enter
     para 'As the daylight wanes, you question the wisdom of making the trek back to town in the dark.'
+    para 'After a quick survey, you find a small concealed clearing and set up camp, listening intently for lurking dangers.'
+    para 'Eventually your guard slips and you are embraced by sleep...'
+    pause
+    end_scene
   end
 end
 
@@ -138,7 +223,8 @@ class TownCautious < Scene
     para 'As he shrugs off the kick, unfurls to his full height and squares you up, you suspect that was a mistake.'
     pause
 
-    Foes.by_id(:bruiser)
+    bruiser = Foes.by_id(:bruiser)
+    bruiser.injure(10)
 
     replace_to :winnipeg
     proceed_to :tavern, true
@@ -158,7 +244,8 @@ class TownCasual < Scene
              "Who the hell are you? Eh, won't matter anyway once I'm scraping you off the bottom of me shoe."
     pause
 
-    player.atk += 5
+    player.weapon = "Shovel"
+    player.weapon_dmg = d(6)
 
     replace_to :winnipeg, :tavern
     proceed_to :combat, :bruiser
@@ -202,12 +289,15 @@ class Tavern < Scene
       case rand(40)
       when 0..30
         para 'He hands you a glass of liquid that you presume must be beer.'
-      when 30..33
+        player.hp += 1
+      when 31..34
         para 'He serves you a tumbler full of rocks and a clear liquid'
         dialogue 'Bartender', 'You said you wanted it on the rocks, right?'
-      when 34..38
+        player.hp += 2
+      when 35..38
         para 'To your surprise, he places an honest to god bottle of unopened craft beer on the bar and slides you a bottle opener. You look up in disbelief, and the bartender winks at you.'
         dialogue 'Bartender', "Rumour has it you're here to kill the Spix, may as well enjoy your last days on earth, eh?"
+        player.max_hp += 1
       else
         dialogue 'Bartender', "Friend, I think you've had enough. Go get some air."
         para 'You turn and leave, suddenly realizing he never gave you back your money.'
@@ -331,6 +421,9 @@ class AssiniboineForest < Scene
     choose!
   end
 end
+
+# detect irb/require
+return unless $0 == __FILE__
 
 window = Window.new
 

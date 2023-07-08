@@ -14,9 +14,13 @@ class Foes
       foe_raw.delete(:id)
 
       # ugh
-      [:attack, :defense, :hp, :exp, :cash].each do |key|
+      [:martial, :evasion, :hp, :exp, :cash].each do |key|
         foe_raw[key] = foe_raw[key].to_i
       end
+      foe_raw[:weapon_dmg] = d(foe_raw[:weapon_dmg])
+      foe_raw[:max_hp] = foe_raw[:max].to_i
+
+      foe_raw[:tags] = (foe_raw[:tags] || "").split("|").map(&:to_sym)
 
       # TODO: unsupported... yet?
       foe_raw.delete(:drops)

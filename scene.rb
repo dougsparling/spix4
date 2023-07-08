@@ -5,7 +5,8 @@ class SceneOwner
 
   def initialize(window)
     # TODO: player should be part of larger state maybe?
-    @player = Player.new(name: 'Doug', hp: 15, attack: 7, defense: 4, cash: 25)
+    #       and should come from a save instead of being created fresh...
+    @player = Player.fresh_off_the_boat
     @scenes = []
     @window = window
     # @window.refresh
@@ -38,6 +39,16 @@ class SceneOwner
 
   def end_scene
     @scenes.pop unless @scenes.empty?
+  end
+
+  def record_roll(*args)
+    args.each do |arg|
+      if arg.is_a?(Roll)
+        window << roll.total
+        window << "(#{roll.rolls.join(',')})"
+      else
+        window << arg
+      end
   end
 end
 
