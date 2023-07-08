@@ -6,34 +6,41 @@ require './foes'
 require './roll'
 
 module Combatant
-  def skill_check(skill)
+  def skill_check(skill, recorder)
     target = self[skill]
     result = Dice.new(6, times: 3).roll
+    recorder[name.capitalize, " rolling #{skill}: ", result]
     [result.total <= target, result]
   end
 
-  def contest(other, skill)
-    self_succ, self_result = skill_check(skill)
+  def contest(other, skill, recorder)
+    self_succ, self_result = skill_check(skill, recorder)
     return false unless self_succ
 
-    other_succ, other_result = other.skill_check(skill)
+    other_succ, other_result = other.skill_check(skill, recorder)
     return true unless other_succ
     
     # TODO: extract margin of success calc
     self_margin = self[skill] - self_result.total
     other_margin = other[skill] - other_result.total
 
-    return self_margin > other_margin
+    self_win = self_margin > other_margin
+    winner = if(self_win.po) then self.name else other.name end
+    recorder["contest won by #{winner}"]
+
+    return self_win
   end
 
-  def strike(other)
-    hit, martial_roll = self.skill_check(:martial)
+  def strike(other, recorder)
+    hit, martial_roll = self.skill_check(:martial, recorder)
+    
     return [:miss, martial_roll] unless hit
 
-    evaded, evade_roll = other.skill_check(:evasion)
+    evaded, evade_roll = other.skill_check(:evasion, recorder)
     return [:evade, evade_roll] if evaded
 
     dmg_roll = weapon_dmg.roll
+    recorder[name, " rolling #{weapon_dmg} damage: ", dmg_roll]
     other.injure(dmg_roll.total)
     return [:hit, dmg_roll]
   end
@@ -88,7 +95,7 @@ Player = Struct.new('Player', *player_fields, keyword_init: true) do
 
   def self.fresh_off_the_boat
     new(
-      name: "Nobody",
+      name: "Doug",
       cash: 25,
       hp: 15,
       max_hp: 15,
@@ -124,7 +131,7 @@ class Combat < Scene
     newline
     para 'Your next action?'
     choice 'Attack!' do
-      result, roll = player.strike(foe)
+      result, roll = player.strike(foe, recorder)
       case result
       when :hit
         line "You attack, dealing #{roll.total} damage!"
@@ -135,7 +142,7 @@ class Combat < Scene
       end
     end
     choice 'Run!' do
-      did_run, _ = player.contest(foe, :evasion)
+      did_run, _ = player.contest(foe, :evasion, recorder)
       
       if did_run && !foe.tagged?(:plot)
         line "You run in panic stricken fear!"
@@ -149,11 +156,12 @@ class Combat < Scene
     choose!
 
     if foe.slain?
+      newline
       para foe.finisher
       pause
       end_scene
     else
-      result, roll = foe.strike(player)
+      result, roll = foe.strike(player, recorder)
       case result
       when :hit
         line "#{foe_name} #{foe.attack_verb} you with its #{foe.weapon}, dealing #{roll.total} damage!"
@@ -184,8 +192,11 @@ end
 
 class Title < Scene
   def enter
-    para 'LEGEND OF THE EVIL SPIX IV:', margin: 4
-    para 'GHOSTS OF THE WASTES', margin: 8
+    para 'LEGEND OF THE EVIL SPIX IV:', margin: 12
+    para 'GHOSTS OF THE WASTES', margin: 16
+    12.times { newline }
+    line 'Dedicated to the BBS door games of yore,', margin: 4, color: :secondary
+    line 'and to friends new and old', margin: 4, color: :secondary
     pause
     proceed_to :town
   end
@@ -228,12 +239,14 @@ class TownCautious < Scene
 
     replace_to :winnipeg
     proceed_to :tavern, true
-    proceed_to :combat, :bruiser
+    proceed_to :combat, bruiser
   end
 end
 
 class TownCasual < Scene
   def enter
+    bruiser = Foes.by_id(:bruiser)
+
     para 'Completely confident, you walk toward the shanty, drawing more than a few quick glances from folk peeking out behind drawn curtains.'
     pause
     para 'You plant your boots on the porch of what must pass for a tavern in this hovel, grab a shovel leaning against the railing, and cry out, "Dylan! Show yourself!"'
@@ -247,8 +260,9 @@ class TownCasual < Scene
     player.weapon = "Shovel"
     player.weapon_dmg = d(6)
 
-    replace_to :winnipeg, :tavern
-    proceed_to :combat, :bruiser
+    replace_to :winnipeg
+    proceed_to :tavern, true
+    proceed_to :combat, bruiser
   end
 end
 
@@ -428,7 +442,7 @@ return unless $0 == __FILE__
 window = Window.new
 
 # boolean:true int:42 string:whatever => [true, 42, "whatever"]
-scene_params = *ARGV[1..].map do |param|
+scene_params = *(ARGV[1..] || []).map do |param|
   ptype, pvalue = param.split(':')
   case ptype
   when 'boolean'
@@ -440,5 +454,5 @@ scene_params = *ARGV[1..].map do |param|
 end
 
 scenes = SceneOwner.new(window)
-scenes.proceed_to ARGV.first.to_sym || :title, *scene_params
+scenes.proceed_to ARGV.first&.to_sym || :title, *scene_params
 scenes.main_loop

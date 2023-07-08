@@ -15,13 +15,23 @@ class Dice
     @times.times do
       rolls << 1 + rand(@die)
     end
-    return Roll.new(rolls)
+    return Roll.new(rolls, self)
+  end
+
+  def to_s
+    if @times == 1
+      "d#{@die}"
+    else
+      "#{@times}d#{@die}"
+    end
   end
 end
 
 class Roll
-  def initialize(rolls)
+  attr_reader :rolls, :dice
+  def initialize(rolls, dice)
     @rolls = rolls
+    @dice = dice
   end
 
   def total

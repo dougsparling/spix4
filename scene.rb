@@ -40,16 +40,6 @@ class SceneOwner
   def end_scene
     @scenes.pop unless @scenes.empty?
   end
-
-  def record_roll(*args)
-    args.each do |arg|
-      if arg.is_a?(Roll)
-        window << roll.total
-        window << "(#{roll.rolls.join(',')})"
-      else
-        window << arg
-      end
-  end
 end
 
 class Scene
@@ -65,6 +55,23 @@ class Scene
 
   def player
     @owner.player
+  end
+
+  def record_roll(*args)
+    line = ""
+    args.each do |arg|
+      if arg.is_a?(Roll)
+        line << arg.total.to_s
+        line << " (#{arg.dice} = #{arg.rolls.join('+')})" if arg.rolls.size > 1
+      else
+        line << arg
+      end
+    end
+    window.line(line, color: :secondary)
+  end
+
+  def recorder
+    method(:record_roll)
   end
 
   # only called on the initial entry to a scene, not subsequent re-enters

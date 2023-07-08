@@ -1,8 +1,13 @@
 require 'curses'
 
-Curses.init_screen
+include Curses
+
+init_screen
 Curses.start_color
 Curses.noecho
+
+Curses.init_pair(COLOR_BLUE,COLOR_BLUE,COLOR_BLACK) 
+Curses.init_pair(COLOR_RED,COLOR_RED,COLOR_BLACK)
 
 # abstraction over the awfulness that is curses
 class Window
@@ -64,7 +69,7 @@ class Window
         choice = @choices[c]
         @choices.clear
         choice.call
-      else
+      else          
         # why can't I show a subwindow without it mangling what's underneath...
         # dialog = @current.derwin(3, 25, 2, 2)
         # dialog << "INVALID CHOICE: #{c}"
@@ -78,7 +83,9 @@ class Window
     end
   end
 
-  def line(text, width: @current.maxx, margin: 0)
+  
+
+  def line(text, width: @current.maxx, margin: 0, color: :primary)
     words = text.split
     line = ''
     until words.empty?
@@ -90,7 +97,19 @@ class Window
 
         # TODO: hack for curses inserting newlines itself, grr
         old_y = @current.cury
-        @current << line
+
+        color_attr = case color
+        when :primary
+          COLOR_BLACK
+        when :secondary
+          COLOR_BLUE
+        else
+          raise "wrong color: #{color}"
+        end
+
+        @current.attron(color_pair(color_attr)|A_NORMAL) do
+          @current << line
+        end
         newline if old_y == @current.cury
 
         break if words.empty?
