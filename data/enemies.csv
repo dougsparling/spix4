@@ -2,5 +2,6 @@ id,name,martial,evasion,hp,weapon,weapon_dmg,attack_verb,finisher,exp,cash,tags,
 bruiser,bruiser,13,6,30,fists,1d4,punches,"You finally land a decisive blow, knocking the bruiser onto a table, flinging glasses wildly around the bar!",5,10,plot,
 elf,elven boy,9,12,5,blow gun,1d3,shoots,"You stomp the boy beneath your boot, while reassuring yourself you’re a good person.",3,5,,
 grandpa,twigged out grandpa,9,6,3,used syringe,2d4,stabs,"You pry the flailing old man off of you, and realize he’s dead before he hits the ground.",4,10,,full_syringe
-scavenger,scavenger,12,11,15,recurve bow,1d6,shoots,"You close within the scavenger’s guard and slam the bow forward into his skull, cracking it!",10,25,,
+scavenger,scavenger,12,11,15,recurve bow,1d6,shoots,"You close within the scavenger’s guard and slam the bow forward into his skull, cracking it!",10,25,,recurve_bow
 mutated_dog,mutated dog,11,11,9,foaming mouth,1d4,bites,"With a howl, you put the beast out of its misery. Looking back, you aren’t sure who was doing the howling.",7,0,,
+raccoons,a pack of raccoons,12,8,10,magic scrotum,1d2,swings,"With a final blow, the surviving raccoons scatter and flee",8,0,,

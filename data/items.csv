@@ -1,0 +1,6 @@
+id,name,description,value,effect_dice,tags
+slurpee,slurpee,One of Winnipeg's famed iced cola beverages; it's concerning that it hasn't melted yet. ,3,2d8,heal
+first_aid,first aid kit,A small pack of sundry items that somehow allow the user to heal serious wounds in the heat of combat,3,2d6,heal
+full_syringe,full syringe,A syringe full of neon-coloured liquid.,1,2d3,grenade
+shovel,shovel,A sturdy shovel,5,1d6,weapon
+recurve_bow,recurve bow,"A well-worn but serviceable bow, and an ample quiver of arrows",10,1d6,weapon

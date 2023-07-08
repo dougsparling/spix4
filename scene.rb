@@ -62,7 +62,7 @@ class Scene
     args.each do |arg|
       if arg.is_a?(Roll)
         line << arg.total.to_s
-        line << " (#{arg.dice} = #{arg.rolls.join('+')})" if arg.rolls.size > 1
+        line << " (#{arg})" if arg.rolls.size > 1
       else
         line << arg
       end

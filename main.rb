@@ -4,6 +4,7 @@ require './scene'
 require './render'
 require './foes'
 require './roll'
+require './items'
 
 module Combatant
   def skill_check(skill, recorder)
@@ -25,8 +26,8 @@ module Combatant
     other_margin = other[skill] - other_result.total
 
     self_win = self_margin > other_margin
-    winner = if(self_win.po) then self.name else other.name end
-    recorder["contest won by #{winner}"]
+    winner = if self_win then self.name else other.name end
+    recorder["Contest won by #{winner}"]
 
     return self_win
   end
@@ -62,10 +63,15 @@ module Combatant
   end
 end
 
-# TODO: move player weapon+weapon_dmg to inventory eventually
-attrs = [:name, :cash, :hp, :max_hp, :weapon, :weapon_dmg]
+Item = Struct.new('Item', :name, :description, :value, :combat, :effect_dice, :tags, keyword_init: true) do
+  def tagged?(tag)
+    tags.include?(tag)
+  end
+end
+
+attrs = [:name, :cash, :hp, :max_hp]
 skills = [:martial, :evasion]
-foe_fields = [:exp, :attack_verb, :finisher, :tags] + attrs + skills 
+foe_fields = [:exp, :attack_verb, :weapon, :weapon_dmg, :finisher, :drops, :tags] + attrs + skills 
 
 Foe = Struct.new('Foe', *foe_fields, keyword_init: true) do
   include Combatant
@@ -83,8 +89,45 @@ end
 
 player_fields = attrs + skills
 
+class Inventory
+  attr_reader :items, :eq_weapon
+
+  def initialize
+    @items = {}
+    @eq_weapon = nil
+  end
+  
+  def equip_weapon(weapon)
+    return unless items.has_key?(weapon)
+    @eq_weapon = weapon
+  end
+
+  def add(item, quantity = 1)
+    @items[item] ||= 0
+    @items[item] += quantity
+  end
+
+  def remove(item)
+    return unless @items.has_key?(item)
+    @items[item] -= 1
+
+    if @items[item] <= 0
+      @items.delete(item) 
+      if @eq_weapon == item
+        @eq_weapon = nil
+      end
+    end
+  end
+end
+
 Player = Struct.new('Player', *player_fields, keyword_init: true) do
   include Combatant
+  attr_reader :inventory
+
+  def initialize(attrs)
+    super(**attrs)
+    @inventory = Inventory.new
+  end
 
   def pay(amount)
     self.cash -= amount
@@ -93,17 +136,27 @@ Player = Struct.new('Player', *player_fields, keyword_init: true) do
     end
   end
 
+  def weapon
+    return "Fists" unless inventory.eq_weapon
+    Items.by_id(inventory.eq_weapon).name
+  end
+
+  def weapon_dmg
+    return d(4) unless inventory.eq_weapon
+    Items.by_id(inventory.eq_weapon).effect_dice
+  end
+
   def self.fresh_off_the_boat
-    new(
+    player = new(
       name: "Doug",
       cash: 25,
       hp: 15,
       max_hp: 15,
       martial: 12,
-      evasion: 10,
-      weapon: "Fists",
-      weapon_dmg: d(4)
+      evasion: 10
     )
+    player.inventory.add(:first_aid, 3)
+    return player
   end
 end
 
@@ -141,6 +194,11 @@ class Combat < Scene
         line "#{foe_name} evades!"
       end
     end
+    choice 'Inventory' do
+      cancel = rummage_through_inventory
+      return if cancel
+    end
+
     choice 'Run!' do
       did_run, _ = player.contest(foe, :evasion, recorder)
       
@@ -153,12 +211,11 @@ class Combat < Scene
         line "You scramble for an opportunity to escape, but #{@foe.name} gives none."
       end
     end
+    
     choose!
 
     if foe.slain?
-      newline
-      para foe.finisher
-      pause
+      conclude_combat
       end_scene
     else
       result, roll = foe.strike(player, recorder)
@@ -168,7 +225,7 @@ class Combat < Scene
       when :miss
         line "#{foe_name} #{foe.attack_verb}, but misses!"
       when :evade
-        line "#{foe_name} #{foe.attack_verb}, but you evade!"
+        line "#{foe_name} #{foe.attack_verb}, but you narrowly evade!"
       end
       
       if player.slain?
@@ -178,6 +235,59 @@ class Combat < Scene
       pause
     end
   end
+
+  def conclude_combat
+    newline
+    para foe.finisher
+    pause
+    if foe.cash > 0
+      para "You pull #{foe.cash} dollars from the corpse of #{foe.name}."
+      player.cash += foe.cash
+      pause
+    end
+
+    para "You gain #{foe.exp} experience."
+    pause
+
+    unless foe.drops.empty?
+      foe.drops.each do |drop|
+        item = Items.by_id(drop)
+        para "You find a '#{item.name}' near the body: #{item.description}"
+        player.inventory.add(drop)
+      end
+      pause
+    end
+    
+  end
+
+  def rummage_through_inventory
+    idx = 1
+    @back = false
+    choice :b, "Go back" do
+      @back = true
+    end
+    player.inventory.items.each do |item_id, quantity|
+      item = Items.by_id(item_id)
+      choice idx.to_s, "#{item.name} (#{quantity})" do
+        if item.tagged?(:heal)
+          heal_roll = item.effect_dice.roll
+          para "You imbibe the #{item.name} and recover #{heal_roll.total} HP (#{heal_roll})"
+          player.heal(heal_roll.total)
+          player.inventory.remove(item_id)
+        elsif item.tagged?(:grenade)
+          dmg_roll = item.effect_dice.roll
+          para "You use the #{item.name} and deal #{dmg_roll.total} damage (#{dmg_roll}) damage"
+          @foe.injure(dmg_roll.total)
+          player.inventory.remove(item_id)
+        else
+          para "You thrust the #{item}"
+        end
+      end
+      idx += 1
+    end
+    choose!
+    return @back
+  end
 end
 
 class Camp < Scene
@@ -186,7 +296,28 @@ class Camp < Scene
     para 'After a quick survey, you find a small concealed clearing and set up camp, listening intently for lurking dangers.'
     para 'Eventually your guard slips and you are embraced by sleep...'
     pause
-    end_scene
+
+    case rand(40)
+    when 1..20
+      para 'You enjoy a deep and uninterrupted sleep'
+      line 'HP fully recovered!', color: :secondary
+      player.hp = player.max_hp
+      pause
+      end_scene
+    when 21..30
+      para 'You awaken to the sound of brush crunching underfoot. You spring from your tent to confront whatever is out there...'
+      pause
+      end_scene
+      proceed_to :combat, :raccoons
+    when 31..38
+      para 'However, distant but unnerving noises interrupt your sleep throughout the night.'
+      pause
+      end_scene
+    else
+      para "In the middle of the night, something rouses you from sleep, although there's no noise or shadows playing across the tent. You decide to investigate, and see the clouds have parted to reveal a full moon."
+      pause
+      end_scene
+    end
   end
 end
 
@@ -257,8 +388,8 @@ class TownCasual < Scene
              "Who the hell are you? Eh, won't matter anyway once I'm scraping you off the bottom of me shoe."
     pause
 
-    player.weapon = "Shovel"
-    player.weapon_dmg = d(6)
+    player.inventory.add(:shovel)
+    player.inventory.equip_weapon(:shovel)
 
     replace_to :winnipeg
     proceed_to :tavern, true
@@ -403,6 +534,9 @@ class Winnipeg < Scene
     end
     choice :t, 'Enter the tavern' do
       proceed_to :tavern
+    end
+    choice :c, "See what's cooking" do
+      proceed_to :cooking
     end
     choice :b, 'Visit the blacksmith' do
       proceed_to :blacksmith

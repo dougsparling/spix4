@@ -37,6 +37,10 @@ class Roll
   def total
     @rolls.reduce(&:+)
   end
+
+  def to_s
+    "#{dice} = #{rolls.join('+')}"
+  end
 end
 
 def d(spec)
