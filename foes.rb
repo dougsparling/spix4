@@ -9,21 +9,21 @@ class Foes
 
     @foes = {}
     lines[1..].each do |line|
-      foe_raw = Hash[keys.zip(line)]
+      foe_raw = keys.zip(line).to_h
       id = foe_raw[:id]
       foe_raw.delete(:id)
 
       # ugh
-      [:martial, :evasion, :hp, :exp, :cash].each do |key|
+      %i[martial evasion hp exp cash].each do |key|
         foe_raw[key] = foe_raw[key].to_i
       end
       foe_raw[:weapon_dmg] = d(foe_raw[:weapon_dmg])
       foe_raw[:max_hp] = foe_raw[:max].to_i
-      foe_raw[:habitat] = (foe_raw[:habitat] || "").split("|").map(&:to_sym)
+      foe_raw[:habitat] = (foe_raw[:habitat] || '').split('|').map(&:to_sym)
       foe_raw[:level] = foe_raw[:level]&.to_i || 0
 
-      foe_raw[:tags] = (foe_raw[:tags] || "").split("|").map(&:to_sym)
-      foe_raw[:drops] = (foe_raw[:drops] || "").split("|").map(&:to_sym)
+      foe_raw[:tags] = (foe_raw[:tags] || '').split('|').map(&:to_sym)
+      foe_raw[:drops] = (foe_raw[:drops] || '').split('|').map(&:to_sym)
 
       @foes[id.to_sym] = foe_raw
     end
@@ -31,7 +31,7 @@ class Foes
 
   class << self
     def instance
-      @instance ||= Foes.new(File.join(__dir__, "data", "enemies.csv"))
+      @instance ||= Foes.new(File.join(__dir__, 'data', 'enemies.csv'))
     end
 
     def by_id(id)
@@ -42,10 +42,11 @@ class Foes
     def random_encounter(habitat, level_min: 1, level_max: 999)
       level_range = level_min..level_max
       matching = instance.foes.filter do |_, foe_raw|
-        foe_raw[:habitat].include?(habitat) && foe_raw[:level] in level_range
+        foe_raw[:habitat].include?(habitat) && level_range.include?(foe_raw[:level])
       end
-      pick = matching.keys.shuffle.first
+      pick = matching.keys.sample
       raise "can't satisfy query" unless pick
+
       by_id(pick)
     end
   end

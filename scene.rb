@@ -58,7 +58,7 @@ class Scene
   end
 
   def record_roll(*args)
-    line = ""
+    line = ''
     args.each do |arg|
       if arg.is_a?(Roll)
         line << arg.total.to_s

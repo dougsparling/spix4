@@ -9,16 +9,14 @@ class Items
 
     @items = {}
     lines[1..].each do |line|
-      item_raw = Hash[keys.zip(line)]
+      item_raw = keys.zip(line).to_h
       id = item_raw[:id]
       item_raw.delete(:id)
 
       item_raw[:value] = item_raw[:value].to_i
-      if item_raw[:effect_dice]
-        item_raw[:effect_dice] = d(item_raw[:effect_dice])
-      end
+      item_raw[:effect_dice] = d(item_raw[:effect_dice]) if item_raw[:effect_dice]
       item_raw[:combat] = item_raw[:combat] == 'true'
-      item_raw[:tags] = (item_raw[:tags] || "").split("|").map(&:to_sym)
+      item_raw[:tags] = (item_raw[:tags] || '').split('|').map(&:to_sym)
 
       @items[id.to_sym] = item_raw
     end
@@ -26,12 +24,16 @@ class Items
 
   class << self
     def instance
-      @instance ||= Items.new(File.join(__dir__, "data", "items.csv"))
+      @instance ||= Items.new(File.join(__dir__, 'data', 'items.csv'))
     end
 
     def by_id(id)
       item_raw = instance.items[id] or raise "unknown item: #{id}"
       Item.new(**item_raw)
+    end
+
+    def valid_id?(id)
+      instance.items.key?(id)
     end
   end
 end

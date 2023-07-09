@@ -18,7 +18,6 @@ end
 
 # single terminal output that plays nicely with printf and other debugging
 class PlainWindow < BaseWindow
-
   def blank
     # no-op
   end
@@ -45,16 +44,16 @@ class PlainWindow < BaseWindow
   def choose!
     until @choices.empty?
       newline
-      c = STDIN.getch.to_s.downcase
+      c = $stdin.getch.to_s.downcase
 
-      raise "weird input, bail!" if c =~ /[^[:print:]]/
+      raise 'weird input, bail!' if c =~ /[^[:print:]]/
 
       if @choices.key?(c)
         newline
         choice = @choices[c]
         @choices.clear
         choice.call
-      else          
+      else
         line "Invalid option #{c}"
       end
     end
@@ -70,12 +69,12 @@ class PlainWindow < BaseWindow
   end
 
   def newline
-    puts ""
+    puts ''
   end
 
   def pause
-    puts "..."
-    STDIN.getch
+    puts '...'
+    $stdin.getch
   end
 end
 
@@ -89,8 +88,8 @@ class CursesWindow < BaseWindow
       start_color
       noecho
 
-      init_pair(COLOR_BLUE,COLOR_BLUE,COLOR_BLACK) 
-      init_pair(COLOR_RED,COLOR_RED,COLOR_BLACK)
+      init_pair(COLOR_BLUE, COLOR_BLUE, COLOR_BLACK)
+      init_pair(COLOR_RED, COLOR_RED, COLOR_BLACK)
 
       @@curses_init_done = true
     end
@@ -142,7 +141,7 @@ class CursesWindow < BaseWindow
         choice = @choices[c]
         @choices.clear
         choice.call
-      else          
+      else
         # why can't I show a subwindow without it mangling what's underneath...
         # dialog = @current.derwin(3, 25, 2, 2)
         # dialog << "INVALID CHOICE: #{c}"
@@ -170,15 +169,15 @@ class CursesWindow < BaseWindow
         old_y = @current.cury
 
         color_attr = case color
-        when :primary
-          COLOR_BLACK
-        when :secondary
-          COLOR_BLUE
-        else
-          raise "wrong color: #{color}"
-        end
+                     when :primary
+                       COLOR_BLACK
+                     when :secondary
+                       COLOR_BLUE
+                     else
+                       raise "wrong color: #{color}"
+                     end
 
-        @current.attron(color_pair(color_attr)|A_NORMAL) do
+        @current.attron(color_pair(color_attr) | A_NORMAL) do
           @current << line
         end
         newline if old_y == @current.cury
