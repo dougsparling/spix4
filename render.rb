@@ -1,17 +1,100 @@
 require 'curses'
+require 'io/console'
 
 include Curses
 
-init_screen
-Curses.start_color
-Curses.noecho
+# functionality that doesn't rely on a particular renderer
+class BaseWindow
+  def say(key_or_text, text_with_key = nil, &block)
+    key = key_or_text.to_s[0].downcase
+    text = text_with_key || key_or_text
+    choice(key, "\"#{text}\"") do
+      newline
+      dialogue 'You', text
+      block&.call
+    end
+  end
+end
 
-Curses.init_pair(COLOR_BLUE,COLOR_BLUE,COLOR_BLACK) 
-Curses.init_pair(COLOR_RED,COLOR_RED,COLOR_BLACK)
+# single terminal output that plays nicely with printf and other debugging
+class PlainWindow < BaseWindow
+
+  def blank
+    # no-op
+  end
+
+  def refresh
+    # no-op
+  end
+
+  def choice(key_or_text, text_with_key = nil, &block)
+    key = key_or_text.to_s[0].downcase
+    text = text_with_key || key_or_text
+
+    @choices ||= {}
+    raise "key #{key} used twice for choice!" if @choices[key]
+
+    @choices[key] = block
+    puts "#{key.upcase}) #{text}"
+  end
+
+  def dialogue(name, text)
+    puts "#{name}: #{text}"
+  end
+
+  def choose!
+    until @choices.empty?
+      newline
+      c = STDIN.getch.to_s.downcase
+
+      raise "weird input, bail!" if c =~ /[^[:print:]]/
+
+      if @choices.key?(c)
+        newline
+        choice = @choices[c]
+        @choices.clear
+        choice.call
+      else          
+        line "Invalid option #{c}"
+      end
+    end
+  end
+
+  def line(text, width: 0, margin: 0, color: nil)
+    puts(text)
+  end
+
+  def para(text, width: 0, margin: 0)
+    line(text)
+    newline
+  end
+
+  def newline
+    puts ""
+  end
+
+  def pause
+    puts "..."
+    STDIN.getch
+  end
+end
 
 # abstraction over the awfulness that is curses
-class Window
+class CursesWindow < BaseWindow
   def initialize
+    # one-time setup needed before buidling curses windows
+    @@curses_init_done ||= false
+    unless @@curses_init_done
+      init_screen
+      start_color
+      noecho
+
+      init_pair(COLOR_BLUE,COLOR_BLUE,COLOR_BLACK) 
+      init_pair(COLOR_RED,COLOR_RED,COLOR_BLACK)
+
+      @@curses_init_done = true
+    end
+
     # centered box in terminal, exposing a smaller subwindow that scenes can draw into
     title = '<~~~  SPIX IV  ~~~>'
     @window = Curses::Window.new(25, 80, (Curses.lines - 25) / 2, (Curses.cols - 80) / 2)
@@ -30,16 +113,6 @@ class Window
 
   def refresh
     @current.refresh
-  end
-
-  def say(key_or_text, text_with_key = nil, &block)
-    key = key_or_text.to_s[0].downcase
-    text = text_with_key || key_or_text
-    choice(key, "\"#{text}\"") do
-      newline
-      dialogue 'You', text
-      block&.call
-    end
   end
 
   def choice(key_or_text, text_with_key = nil, &block)
@@ -82,8 +155,6 @@ class Window
       end
     end
   end
-
-  
 
   def line(text, width: @current.maxx, margin: 0, color: :primary)
     words = text.split

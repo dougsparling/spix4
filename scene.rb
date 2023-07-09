@@ -31,13 +31,13 @@ class SceneOwner
   end
 
   def replace_to(*next_scenes)
-    end_scene
+    finish_scene
     next_scenes.each do |scene|
       proceed_to scene
     end
   end
 
-  def end_scene
+  def finish_scene
     @scenes.pop unless @scenes.empty?
   end
 end
@@ -46,8 +46,8 @@ class Scene
   extend Forwardable
   attr_accessor :owner
 
-  def_delegators :window, :choice, :dialogue, :say, :choose!, :line, :para, :newline, :pause
-  def_delegators :@owner, :proceed_to, :replace_to, :end_scene
+  def_delegators :window, :choice, :dialogue, :say, :choose!, :line, :para, :newline, :pause, :blank
+  def_delegators :@owner, :proceed_to, :replace_to, :finish_scene
 
   def window
     @owner.window

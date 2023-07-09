@@ -1,4 +1,5 @@
 require 'curses'
+require 'debug'
 
 require './scene'
 require './render'
@@ -7,18 +8,18 @@ require './roll'
 require './items'
 
 module Combatant
-  def skill_check(skill, recorder)
-    target = self[skill]
+  def skill_check(recorder, skill, modifier: 0)
+    target = self[skill] + modifier
     result = Dice.new(6, times: 3).roll
-    recorder[name.capitalize, " rolling #{skill}: ", result]
-    [result.total <= target, result]
+    recorder[name.capitalize, " rolling #{skill} against #{target} + #{modifier}: ", result]
+    [result.total + modifier <= target, result]
   end
 
-  def contest(other, skill, recorder)
-    self_succ, self_result = skill_check(skill, recorder)
+  def contest(recorder, other, skill)
+    self_succ, self_result = skill_check(recorder, skill)
     return false unless self_succ
 
-    other_succ, other_result = other.skill_check(skill, recorder)
+    other_succ, other_result = other.skill_check(recorder, skill)
     return true unless other_succ
     
     # TODO: extract margin of success calc
@@ -32,12 +33,12 @@ module Combatant
     return self_win
   end
 
-  def strike(other, recorder)
-    hit, martial_roll = self.skill_check(:martial, recorder)
+  def strike(recorder, other)
+    hit, martial_roll = self.skill_check(recorder, :martial)
     
     return [:miss, martial_roll] unless hit
 
-    evaded, evade_roll = other.skill_check(:evasion, recorder)
+    evaded, evade_roll = other.skill_check(recorder, :evasion)
     return [:evade, evade_roll] if evaded
 
     dmg_roll = weapon_dmg.roll
@@ -87,19 +88,48 @@ Foe = Struct.new('Foe', *foe_fields, keyword_init: true) do
   end
 end
 
-player_fields = attrs + skills
+player_fields = [:exp, :level] + attrs + skills
 
 class Inventory
+  include Enumerable
   attr_reader :items, :eq_weapon
 
   def initialize
     @items = {}
     @eq_weapon = nil
   end
+
+  def each(&block)
+    @items.each do |id, quantity|
+      item = Items.by_id(id)
+      block.call(id, item, quantity)
+    end
+  end
+
+  def by_tag(*tags)
+    filter do |_, item, _|
+      tags.any? do |tag|
+        item.tagged?(tag)
+      end
+    end
+  end
   
   def equip_weapon(weapon)
     return unless items.has_key?(weapon)
     @eq_weapon = weapon
+  end
+
+  def empty?
+    @items.empty?
+  end
+
+  def has?(item)
+    raise unless item.is_a? Symbol
+    @items.has_key?(item)
+  end
+
+  def quantity(item)
+    @items[item] || 0
   end
 
   def add(item, quantity = 1)
@@ -136,6 +166,14 @@ Player = Struct.new('Player', *player_fields, keyword_init: true) do
     end
   end
 
+  def next_level_exp
+    (level.to_f ** 1.5).ceil.to_i * 100
+  end
+
+  def ready_to_level_up?
+    exp >= next_level_exp
+  end
+
   def weapon
     return "Fists" unless inventory.eq_weapon
     Items.by_id(inventory.eq_weapon).name
@@ -149,6 +187,8 @@ Player = Struct.new('Player', *player_fields, keyword_init: true) do
   def self.fresh_off_the_boat
     player = new(
       name: "Doug",
+      exp: 0,
+      level: 1,
       cash: 25,
       hp: 15,
       max_hp: 15,
@@ -184,7 +224,7 @@ class Combat < Scene
     newline
     para 'Your next action?'
     choice 'Attack!' do
-      result, roll = player.strike(foe, recorder)
+      result, roll = player.strike(recorder, foe)
       case result
       when :hit
         line "You attack, dealing #{roll.total} damage!"
@@ -194,18 +234,29 @@ class Combat < Scene
         line "#{foe_name} evades!"
       end
     end
+    # choice 'Power Attack!' do
+    #   result, roll = player.strike(recorder, foe)
+    #   case result
+    #   when :hit
+    #     line "You attack, dealing #{roll.total} damage!"
+    #   when :miss
+    #     line "You miss!"
+    #   when :evade
+    #     line "#{foe_name} evades!"
+    #   end
+    # end
     choice 'Inventory' do
       cancel = rummage_through_inventory
       return if cancel
     end
 
     choice 'Run!' do
-      did_run, _ = player.contest(foe, :evasion, recorder)
+      did_run, _ = player.contest(recorder, foe, :evasion)
       
       if did_run && !foe.tagged?(:plot)
         line "You run in panic stricken fear!"
         pause
-        end_scene
+        finish_scene
         return
       else
         line "You scramble for an opportunity to escape, but #{@foe.name} gives none."
@@ -216,9 +267,9 @@ class Combat < Scene
 
     if foe.slain?
       conclude_combat
-      end_scene
+      finish_scene
     else
-      result, roll = foe.strike(player, recorder)
+      result, roll = foe.strike(recorder, player)
       case result
       when :hit
         line "#{foe_name} #{foe.attack_verb} you with its #{foe.weapon}, dealing #{roll.total} damage!"
@@ -247,6 +298,7 @@ class Combat < Scene
     end
 
     para "You gain #{foe.exp} experience."
+    player.exp += foe.exp
     pause
 
     unless foe.drops.empty?
@@ -262,16 +314,13 @@ class Combat < Scene
 
   def rummage_through_inventory
     idx = 1
-    @back = false
-    choice :b, "Go back" do
-      @back = true
-    end
-    player.inventory.items.each do |item_id, quantity|
-      item = Items.by_id(item_id)
+    back = false
+    newline
+    player.inventory.by_tag(:grenade, :heal).each do |item_id, item, quantity|
       choice idx.to_s, "#{item.name} (#{quantity})" do
         if item.tagged?(:heal)
           heal_roll = item.effect_dice.roll
-          para "You imbibe the #{item.name} and recover #{heal_roll.total} HP (#{heal_roll})"
+          para "You use the #{item.name} and recover #{heal_roll.total} HP (#{heal_roll})"
           player.heal(heal_roll.total)
           player.inventory.remove(item_id)
         elsif item.tagged?(:grenade)
@@ -280,13 +329,86 @@ class Combat < Scene
           @foe.injure(dmg_roll.total)
           player.inventory.remove(item_id)
         else
-          para "You thrust the #{item}"
+          para "You thrust the #{item.name} into the air... and nothing happens."
         end
       end
       idx += 1
     end
+    choice :b, "Don't use any items" do
+      back = true
+    end
     choose!
-    return @back
+    return back
+  end
+end
+
+class Barter < Scene
+  def initialize(shopkeep_name, goods)
+    @shopkeep_name = shopkeep_name
+    @goods = goods
+  end
+  def enter
+    para "Trading with #{@shopkeep_name}. You have $#{player.cash}."
+
+    @goods.each_with_index do |good_id, index|
+      item = Items.by_id(good_id)
+      choice (index+1).to_s, "Inspect #{item.name} ($#{item.value})" do
+        inspect_good(good_id)
+      end
+    end
+
+    choice :l, "Leave" do
+      para 'You politely gaze about as if considering a purchase, then leave'
+      finish_scene
+    end
+
+    choose!
+  end
+
+  def inspect_good(good_id)
+    item = Items.by_id(good_id)
+    tags = item.tags.map(&->(t){ t.to_s.capitalize }).join(', ')
+    para "Inspecting '#{item.name}' (#{tags}):"
+    para "#{item.description}", margin: 4
+
+    if player.inventory.has?(good_id)
+      line "You already own #{player.inventory.quantity(good_id)} of these."
+    else
+      line "You don't own any of these yet."
+    end
+
+    newline
+
+    if item.tagged?(:fancy)
+      line "Skill: fancy weapon"
+      line "Damage: #{item.effect_dice}"
+    elsif item.tagged?(:weapon)
+      line "Skill: martial"
+      line "Damage: #{item.effect_dice}"
+    elsif item.tagged?(:grenade)
+      line "Comsumable"
+      line "Damage: #{item.effect_dice}"
+    elsif item.tagged?(:heal)
+      line "Comsumable"
+      line "Heals: #{item.effect_dice}"
+    end
+
+    newline
+
+    choice "Purchase" do
+      if player.cash >= item.value
+        player.pay(item.value)
+        player.inventory.add(good_id)
+        line "You fork over $#{item.value} to #{@shopkeep_name}, and he hands you the #{item.name}!"
+      else
+        line "You can't afford it! Should have invested in Bitcoin, have fun being poor."
+      end
+      pause
+    end
+    choice "Examine something else" do
+      # nothing
+    end
+    choose!
   end
 end
 
@@ -303,20 +425,20 @@ class Camp < Scene
       line 'HP fully recovered!', color: :secondary
       player.hp = player.max_hp
       pause
-      end_scene
+      finish_scene
     when 21..30
       para 'You awaken to the sound of brush crunching underfoot. You spring from your tent to confront whatever is out there...'
       pause
-      end_scene
+      finish_scene
       proceed_to :combat, :raccoons
     when 31..38
       para 'However, distant but unnerving noises interrupt your sleep throughout the night.'
       pause
-      end_scene
+      finish_scene
     else
       para "In the middle of the night, something rouses you from sleep, although there's no noise or shadows playing across the tent. You decide to investigate, and see the clouds have parted to reveal a full moon."
       pause
-      end_scene
+      finish_scene
     end
   end
 end
@@ -421,7 +543,7 @@ class Tavern < Scene
     drink_dialogue if player.cash >= 5
     choice 'Leave' do
       para 'You slap the bar, turn and leave.'
-      end_scene
+      finish_scene
     end
     choose!
     pause
@@ -446,7 +568,7 @@ class Tavern < Scene
       else
         dialogue 'Bartender', "Friend, I think you've had enough. Go get some air."
         para 'You turn and leave, suddenly realizing he never gave you back your money.'
-        end_scene
+        finish_scene
       end
     end
   end
@@ -472,7 +594,7 @@ class Dylan < Scene
     end
     choice 'Leave' do
       para 'You excuse yourself and leave Dylan in peace.'
-      end_scene
+      finish_scene
     end
     choose!
     pause
@@ -503,7 +625,7 @@ class Dylan < Scene
         dialogue 'Dylan', "Right... anyway, as I saying, just bring me the weapon fragments of Hammond's Rifle, and I'll re-assemble it. You'll be on your own after that. Hammond's lab was supposedly underground in a treed park somewhere, I suggest starting at Assiniboine forest, though it's overrun with raiders and other nasties these days."
 
         para 'You nod, satisfied both at having finally extracted some useful information and at the chance to start cracking skulls again.'
-        end_scene
+        finish_scene
       end
 
       choose!
@@ -544,8 +666,88 @@ class Winnipeg < Scene
     choice :s, 'Find a shanty to curl up and rest in (save)' do
       proceed_to :save
     end
+    newline
+    choice :m, 'View character sheet' do
+      proceed_to :character_sheet
+    end
 
     choose!
+  end
+end
+
+class CharacterSheet < Scene
+  def enter
+    para "~~~ #{player.name}'s Stats ~~~"
+
+    para "#{player.hp} / #{player.max_hp} HP"
+    
+    line "Level: #{player.level}"
+    para "Exp: #{player.exp} / #{player.next_level_exp}"
+    
+    para "Cash: $#{player.cash}"
+
+    [:martial, :evasion].each do |skill|
+      line "#{skill.to_s.capitalize} Skill: #{player[skill]}"
+    end
+    newline
+    line "Weapon: #{player.weapon}"
+    line "Armour: None"
+    newline
+    choice :w, "Equip weapon" do
+      weapons = player.inventory.filter { |_, item| item.tagged?(:weapon) }
+      if weapons.empty?
+        line "Seems you don't have any implements of violence among your meager posseessions." 
+        pause
+      else
+        # TODO: can probably extract a generic inventory picker from this...
+        idx = 1
+        weapons.each do |item_id, item, quantity|
+          choice idx.to_s, "Equip '#{item.name}'" do
+            para "You grip the #{item.name} in your hands and turn it over a few times. Better than nothing, you suppose."
+            player.inventory.equip_weapon(item_id)
+            pause
+          end
+          idx += 1
+        end
+        unless player.inventory.eq_weapon.nil?
+          choice :u, "Remove equipped weapon" do
+            player.inventory.equip_weapon(nil)
+          end
+        end
+        choice :n, "Leave equipment alone for now" do
+          # nothing
+        end
+        choose!
+      end
+    end
+    choice :i, "Inventory" do
+      blank
+      para "You dump your rucksack onto the ground, and take stock of everything inside:"
+      line "Moths fly from the empty sack." if player.inventory.empty?
+      
+      player.inventory.each do |_, item, quantity|
+        line "#{quantity} #{item.name}"
+      end
+      newline
+      pause
+    end
+
+    choice :d, "Done" do
+      finish_scene
+    end
+
+    choose!
+  end
+end
+
+class Blacksmith < Scene
+  def enter
+    para 'You approach the source of all the racket around here, and an elderly wisp of a man wearing a faded t-shirt covered in foreign writing hammers relentlessly on a feeble looking knife.'
+    dialogue "Blacksmith", "Greetings weary traveler! Might thy wishest to, uh, partake in mine fine goods around yonder? Or is it 'thou'..."
+    para 'He mumbles to himself while you browse his offerings'
+    pause
+    finish_scene
+    proceed_to :barter, "Blacksmith", [:shovel, :knife]
   end
 end
 
@@ -564,16 +766,20 @@ class AssiniboineForest < Scene
       proceed_to :camp
     end
     choice :l, 'Leave' do
-      end_scene
+      finish_scene
     end
     choose!
   end
 end
 
-# detect irb/require
+# detect irb/require and don't jump into game
 return unless $0 == __FILE__
 
-window = Window.new
+window = if ENV['window']&.downcase == "plain"
+  PlainWindow.new
+else 
+  CursesWindow.new
+end
 
 # boolean:true int:42 string:whatever => [true, 42, "whatever"]
 scene_params = *(ARGV[1..] || []).map do |param|

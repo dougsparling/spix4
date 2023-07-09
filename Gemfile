@@ -10,3 +10,4 @@ gem 'curses'
 
 gem 'rubocop', require: false
 gem 'solargraph', require: false
+gem 'debug', require: false
