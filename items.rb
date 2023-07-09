@@ -14,7 +14,9 @@ class Items
       item_raw.delete(:id)
 
       item_raw[:value] = item_raw[:value].to_i
-      item_raw[:effect_dice] = d(item_raw[:effect_dice])
+      if item_raw[:effect_dice]
+        item_raw[:effect_dice] = d(item_raw[:effect_dice])
+      end
       item_raw[:combat] = item_raw[:combat] == 'true'
       item_raw[:tags] = (item_raw[:tags] || "").split("|").map(&:to_sym)
 

@@ -19,6 +19,8 @@ class Foes
       end
       foe_raw[:weapon_dmg] = d(foe_raw[:weapon_dmg])
       foe_raw[:max_hp] = foe_raw[:max].to_i
+      foe_raw[:habitat] = (foe_raw[:habitat] || "").split("|").map(&:to_sym)
+      foe_raw[:level] = foe_raw[:level]&.to_i || 0
 
       foe_raw[:tags] = (foe_raw[:tags] || "").split("|").map(&:to_sym)
       foe_raw[:drops] = (foe_raw[:drops] || "").split("|").map(&:to_sym)
@@ -35,6 +37,16 @@ class Foes
     def by_id(id)
       foe_raw = instance.foes[id] or raise "unknown foe: #{id}"
       Foe.new(**foe_raw)
+    end
+
+    def random_encounter(habitat, level_min: 1, level_max: 999)
+      level_range = level_min..level_max
+      matching = instance.foes.filter do |_, foe_raw|
+        foe_raw[:habitat].include?(habitat) && foe_raw[:level] in level_range
+      end
+      pick = matching.keys.shuffle.first
+      raise "can't satisfy query" unless pick
+      by_id(pick)
     end
   end
 end

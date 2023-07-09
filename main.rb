@@ -72,7 +72,7 @@ end
 
 attrs = [:name, :cash, :hp, :max_hp]
 skills = [:martial, :evasion]
-foe_fields = [:exp, :attack_verb, :weapon, :weapon_dmg, :finisher, :drops, :tags] + attrs + skills 
+foe_fields = [:exp, :attack_verb, :weapon, :weapon_dmg, :finisher, :drops, :level, :habitat, :tags] + attrs + skills 
 
 Foe = Struct.new('Foe', *foe_fields, keyword_init: true) do
   include Combatant
@@ -167,7 +167,7 @@ Player = Struct.new('Player', *player_fields, keyword_init: true) do
   end
 
   def next_level_exp
-    (level.to_f ** 1.5).ceil.to_i * 100
+    (level.to_f ** 1.5).ceil.to_i * 25
   end
 
   def ready_to_level_up?
@@ -189,7 +189,7 @@ Player = Struct.new('Player', *player_fields, keyword_init: true) do
       name: "Doug",
       exp: 0,
       level: 1,
-      cash: 25,
+      cash: 5,
       hp: 15,
       max_hp: 15,
       martial: 12,
@@ -624,6 +624,8 @@ class Dylan < Scene
 
         dialogue 'Dylan', "Right... anyway, as I saying, just bring me the weapon fragments of Hammond's Rifle, and I'll re-assemble it. You'll be on your own after that. Hammond's lab was supposedly underground in a treed park somewhere, I suggest starting at Assiniboine forest, though it's overrun with raiders and other nasties these days."
 
+        dialogue 'Dylan', "Also, as you make progress toward our shared goals, report back to me periodically and I'll teach you whatever else I can to aid you."
+        
         para 'You nod, satisfied both at having finally extracted some useful information and at the chance to start cracking skulls again.'
         finish_scene
       end
@@ -634,7 +636,18 @@ class Dylan < Scene
 
   def show_regular_dialogue
     say 'Any words of wisdom?' do
-      para 'He raises an eyebrow at you, and looks down, resuming his writing.'
+      if player.ready_to_level_up?
+        para 'He gives you a critical look.'
+        dialogue 'Dylan', "It does seem you're making a name for yourself here. Perhaps you can be taught after all."
+        choice :l, "Level up!" do
+          proceed_to :level_up
+        end
+        choice :n, 'Nevermind' do
+
+        end
+      else
+        para 'He raises an eyebrow at you, and looks down, resuming his writing.'
+      end
     end
   end
 end
@@ -740,6 +753,28 @@ class CharacterSheet < Scene
   end
 end
 
+class LevelUp < Scene
+  def enter
+    next_level = player.level + 1
+    para "Welcome to level #{next_level}!"
+    
+    choice :m, "Train martial skill (#{player.martial} -> #{player.martial + 1})" do
+      player.martial += 1
+    end
+    choice :e, "Train evasion skill (#{player.evasion} -> #{player.evasion + 1})" do
+      player.evasion += 1
+    end
+    choice :h, "Train body (#{player.hp} -> #{player.hp + 3} HP)" do
+      player.hp += 3
+    end
+
+    choose!
+    para "Under Dylan's tutilage, you prepare for whatever the wastes will throw at you next."
+    pause
+    finish_scene
+  end
+end
+
 class Blacksmith < Scene
   def enter
     para 'You approach the source of all the racket around here, and an elderly wisp of a man wearing a faded t-shirt covered in foreign writing hammers relentlessly on a feeble looking knife.'
@@ -759,8 +794,7 @@ class AssiniboineForest < Scene
     end
 
     choice :i, 'Investigate' do
-      foes = [:mutated_dog, :elf, :grandpa, :scavenger]
-      proceed_to :combat, foes[rand(foes.size)]
+      proceed_to :combat, Foes.random_encounter(:forest, level_max: player.level)
     end
     choice :c, 'Camp' do
       proceed_to :camp
