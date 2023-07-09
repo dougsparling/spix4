@@ -8,22 +8,35 @@ require './roll'
 require './items'
 
 module Combatant
-  def skill_check(recorder, skill, modifier: 0)
-    target = self[skill] + modifier
-    result = Dice.new(6, times: 3).roll
-    recorder[name.capitalize, " rolling #{skill} against #{target} + #{modifier}: ", result]
-    [result.total + modifier <= target, result]
+  
+  def new_round!
+    @can_evade = true
   end
 
-  def contest(recorder, other, skill)
-    self_succ, self_result = skill_check(recorder, skill)
+  def can_evade?
+    @can_evade
+  end
+
+  def forfeit_evade!
+    @can_evade = false
+  end
+
+  def skill_check(recorder, skill, modifier: 0)
+    target = self[skill]
+    result = Dice.new(6, times: 3).roll
+    recorder[name.capitalize, " rolling #{skill} against #{target} + #{modifier}: ", result]
+    [result.total <= target + modifier, result]
+  end
+
+  def contest(recorder, other, skill, modifier: 0)
+    self_succ, self_result = skill_check(recorder, skill, modifier: modifier)
     return false unless self_succ
 
     other_succ, other_result = other.skill_check(recorder, skill)
     return true unless other_succ
 
     # TODO: extract margin of success calc
-    self_margin = self[skill] - self_result.total
+    self_margin = self[skill] + modifier - self_result.total
     other_margin = other[skill] - other_result.total
 
     self_win = self_margin > other_margin
@@ -33,16 +46,18 @@ module Combatant
     self_win
   end
 
-  def strike(recorder, other)
-    hit, martial_roll = skill_check(recorder, :martial)
+  def strike(recorder, other, modifier: 0)
+    hit, martial_roll = skill_check(recorder, :martial, modifier: modifier)
 
     return [:miss, martial_roll] unless hit
 
-    evaded, evade_roll = other.skill_check(recorder, :evasion)
-    return [:evade, evade_roll] if evaded
+    if other.can_evade?
+      evaded, evade_roll = other.skill_check(recorder, :evasion)
+      return [:evade, evade_roll] if evaded
+    end
 
-    dmg_roll = weapon_dmg.roll
-    recorder[name, " rolling #{weapon_dmg} damage: ", dmg_roll]
+    dmg_roll = weapon_dmg.roll(modifier)
+    recorder[name, " rolling damage: ", dmg_roll]
     other.injure(dmg_roll.total)
     [:hit, dmg_roll]
   end
@@ -227,8 +242,13 @@ class Combat < Scene
     line "#{player.name}'s HP:    #{player.hp} / #{player.max_hp}", margin: 4
     line "#{foe_name}'s HP:   #{foe.hp} / #{foe.max_hp}", margin: 4
     newline
+
+    # pre-round tasks
+    player.new_round!
+    foe.new_round!
+
     para 'Your next action?'
-    choice 'Attack!' do
+    choice 'Attack' do
       result, roll = player.strike(recorder, foe)
       case result
       when :hit
@@ -239,24 +259,25 @@ class Combat < Scene
         line "#{foe_name} evades!"
       end
     end
-    # choice 'Power Attack!' do
-    #   result, roll = player.strike(recorder, foe)
-    #   case result
-    #   when :hit
-    #     line "You attack, dealing #{roll.total} damage!"
-    #   when :miss
-    #     line "You miss!"
-    #   when :evade
-    #     line "#{foe_name} evades!"
-    #   end
-    # end
+    choice 'Power Attack' do
+      player.forfeit_evade!
+      result, roll = player.strike(recorder, foe, modifier: 2)
+      case result
+      when :hit
+        line "You attack, dealing #{roll.total} damage!"
+      when :miss
+        line "You miss!"
+      when :evade
+        line "#{foe_name} evades!"
+      end
+    end
     choice 'Inventory' do
       cancel = rummage_through_inventory
       return if cancel
     end
 
-    choice 'Run!' do
-      did_run, = player.contest(recorder, foe, :evasion)
+    choice 'Escape' do
+      did_run, = player.contest(recorder, foe, :evasion, modifier: 4)
 
       if did_run && !foe.tagged?(:plot)
         line 'You run in panic stricken fear!'
@@ -435,7 +456,7 @@ class Camp < Scene
       para 'You awaken to the sound of brush crunching underfoot. You spring from your tent to confront whatever is out there...'
       pause
       finish_scene
-      proceed_to :combat, :raccoons
+      proceed_to :combat, Foes.random_encounter(:camp, level_max: player.level)
     when 31..38
       para 'However, distant but unnerving noises interrupt your sleep throughout the night.'
       pause
@@ -562,17 +583,17 @@ class Tavern < Scene
       when 0..30
         para 'He hands you a glass of liquid that you presume must be beer.'
         player.hp += 3
-        para 'Recovered 3 HP.', color: :secondary
+        line 'Recovered 3 HP.', color: :secondary
       when 31..34
         para 'He serves you a tumbler full of rocks and a clear liquid'
         dialogue 'Bartender', 'You said you wanted it on the rocks, right?'
         player.hp += 2
-        para 'Recovered 5 HP.', color: :secondary
+        line 'Recovered 5 HP.', color: :secondary
       when 35..38
         para 'To your surprise, he places an honest to god bottle of unopened craft beer on the bar and slides you a bottle opener. You look up in disbelief, and the bartender winks at you.'
         dialogue 'Bartender', "Rumour has it you're here to kill the Spix, may as well enjoy your last days on earth, eh?"
         player.max_hp += 1
-        para 'Max HP up!', color: :secondary
+        line 'Max HP up!', color: :secondary
       else
         dialogue 'Bartender', "Friend, I think you've had enough. Go get some air."
         para 'You turn and leave, suddenly realizing he never gave you back your money.'

@@ -11,12 +11,12 @@ class Dice
     self
   end
 
-  def roll
+  def roll(modifier = 0)
     rolls = []
     @times.times do
       rolls << (1 + rand(@die))
     end
-    Roll.new(rolls, self)
+    Roll.new(rolls, modifier, self)
   end
 
   def to_s
@@ -29,22 +29,28 @@ class Dice
 end
 
 class Roll
-  attr_reader :rolls, :dice
+  attr_reader :rolls, :modifier, :dice
 
-  def initialize(rolls, dice)
+  def initialize(rolls, modifier, dice)
     @rolls = rolls
+    @modifier = modifier
     @dice = dice
   end
 
   def total
-    @rolls.reduce(&:+)
+    @rolls.reduce(&:+) + modifier
   end
 
   def to_s
-    "#{dice} = #{rolls.join('+')}"
+    if modifier == 0
+      "#{dice} = #{rolls.join('+')}"
+    else
+      "#{dice}+#{modifier} = #{rolls.join('+')}+#{modifier}"
+    end
   end
 end
 
+# TODO: support for dice modifiers might be nice, that can be added to roll modifiers
 def d(spec)
   if spec.is_a?(Integer)
     Dice.new(spec)
