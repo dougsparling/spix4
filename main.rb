@@ -177,21 +177,11 @@ end
 
 Player = Struct.new('Player', *player_fields, keyword_init: true) do
   include Combatant
-  attr_reader :inventory
+  attr_accessor :inventory
 
   def initialize(attrs)
-    player_attrs = attrs.clone.tap { |it| it.delete('inventory') }
-    super(**player_attrs)
-    
-    # symbolize keys since if loaded from json, might be strings (this is nasty)
-    # there's gotta be a better way
-    inv_hash = attrs['inventory'] || {}
-    inv_hash = Hash[inv_hash.map { |k, v| [k.to_sym, v] }]
-    inv_hash[:eq_weapon] = inv_hash['eq_weapon']&.to_sym
-    inv_hash = Hash[inv_hash.map { |k, v| [k.to_sym, v] }]
-    inv_hash[:items] = Hash[(inv_hash[:items] || {}).map { |k, v| [k.to_sym, v] }]
-
-    @inventory = Inventory.new(**inv_hash)
+    super(**attrs)
+    @inventory = Inventory.new
   end
 
   def pay(amount)
@@ -225,6 +215,22 @@ Player = Struct.new('Player', *player_fields, keyword_init: true) do
     data = to_h
     data['inventory'] = @inventory.to_h
     data.to_json
+  end
+
+  def self.deserialize_from(hash)
+    player_attrs = hash.clone.tap { |it| it.delete('inventory') }
+    player = Player.new(**player_attrs)
+    
+    # symbolize keys since if loaded from json, might be strings (this is nasty)
+    # there's gotta be a better way
+    inv_hash = hash['inventory'] || {}
+    inv_hash = Hash[inv_hash.map { |k, v| [k.to_sym, v] }]
+    inv_hash[:eq_weapon] = inv_hash[:eq_weapon]&.to_sym
+    inv_hash = Hash[inv_hash.map { |k, v| [k.to_sym, v] }]
+    inv_hash[:items] = Hash[(inv_hash[:items] || {}).map { |k, v| [k.to_sym, v] }]
+    player.inventory = Inventory.new(**inv_hash)
+
+    player
   end
 
   def self.fresh_off_the_boat
@@ -354,7 +360,7 @@ class Combat < Scene
 
     foe.drops.each do |drop|
       item = Items.by_id(drop)
-      para "After surveying the carnage, you also find a #{item.name}: #{item.description}"
+      para "After surveying the carnage, you find an intact #{item.name}: #{item.description}"
       player.inventory.add(drop)
     end
     pause
@@ -852,6 +858,14 @@ class Cooking < Scene
 
     if @antagonize < 0
       para "The cook lays broken by the grill."
+
+      choice :s, "Steal whatever food is prepped." do
+        player.inventory.add(:hamburger, d(4).roll.total)
+        player.inventory.add(:slurpee, d(4).roll.total)
+        para "You throw your open pack onto the back of the cook, and steal everything on the order counter. At this point you hear murmurs from a forming crowd, so you make a hasty exit."
+        pause
+        finish_scene
+      end
     else
       dialogue 'Cook', "Yeah, what'll it be?"
 
@@ -910,7 +924,7 @@ class AssiniboineForest < Scene
       proceed_to :combat, Foes.random_encounter(:forest, level_max: player.level)
     end
     if player.inventory.has?(:scouts_note)
-      choice :i, 'Investigate the perimeter described in the note' do
+      choice :i, "Investigate the perimeter described in the scout's note" do
         proceed_to :combat, Foes.random_encounter(:hammond_perimeter, level_max: player.level + 1)
       end
     end
@@ -957,8 +971,7 @@ class Load < Scene
   def load(file)
     contents = File.read(file)
     res = JSON.parse(contents)
-    owner.player = Player.new(**res)
-    
+    owner.player = Player.deserialize_from(res)
     replace_to :winnipeg
   end
 end
