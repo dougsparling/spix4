@@ -2,6 +2,7 @@ require 'forwardable'
 
 class SceneOwner
   attr_reader :window, :player
+  attr_writer :player
 
   def initialize(window)
     # TODO: player should be part of larger state maybe?

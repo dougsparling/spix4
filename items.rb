@@ -28,6 +28,7 @@ class Items
     end
 
     def by_id(id)
+      raise "not symbol: #{id}" unless id.is_a? Symbol
       item_raw = instance.items[id] or raise "unknown item: #{id}"
       Item.new(**item_raw)
     end

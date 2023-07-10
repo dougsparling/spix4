@@ -1,5 +1,6 @@
 require 'curses'
 require 'debug'
+require 'json'
 
 require './scene'
 require './render'
@@ -106,12 +107,12 @@ end
 player_fields = %i[exp level] + attrs + skills
 
 class Inventory
-  include Enumerable
   attr_reader :items, :eq_weapon
-
-  def initialize
-    @items = {}
-    @eq_weapon = nil
+  include Enumerable
+  
+  def initialize(items: {}, eq_weapon: nil)
+    @items = items
+    @eq_weapon = eq_weapon
   end
 
   def each(&block)
@@ -131,7 +132,6 @@ class Inventory
 
   def equip_weapon(weapon)
     return unless items.key?(weapon)
-
     @eq_weapon = weapon
   end
 
@@ -166,6 +166,13 @@ class Inventory
 
     @eq_weapon = nil
   end
+
+  def to_h
+    {
+      'items': items,
+      'eq_weapon': eq_weapon
+    }
+  end
 end
 
 Player = Struct.new('Player', *player_fields, keyword_init: true) do
@@ -173,8 +180,18 @@ Player = Struct.new('Player', *player_fields, keyword_init: true) do
   attr_reader :inventory
 
   def initialize(attrs)
-    super(**attrs)
-    @inventory = Inventory.new
+    player_attrs = attrs.clone.tap { |it| it.delete('inventory') }
+    super(**player_attrs)
+    
+    # symbolize keys since if loaded from json, might be strings (this is nasty)
+    # there's gotta be a better way
+    inv_hash = attrs['inventory'] || {}
+    inv_hash = Hash[inv_hash.map { |k, v| [k.to_sym, v] }]
+    inv_hash[:eq_weapon] = inv_hash['eq_weapon']&.to_sym
+    inv_hash = Hash[inv_hash.map { |k, v| [k.to_sym, v] }]
+    inv_hash[:items] = Hash[(inv_hash[:items] || {}).map { |k, v| [k.to_sym, v] }]
+
+    @inventory = Inventory.new(**inv_hash)
   end
 
   def pay(amount)
@@ -202,6 +219,12 @@ Player = Struct.new('Player', *player_fields, keyword_init: true) do
     return d(4) unless inventory.eq_weapon
 
     Items.by_id(inventory.eq_weapon).effect_dice
+  end
+
+  def serialize
+    data = to_h
+    data['inventory'] = @inventory.to_h
+    data.to_json
   end
 
   def self.fresh_off_the_boat
@@ -331,7 +354,7 @@ class Combat < Scene
 
     foe.drops.each do |drop|
       item = Items.by_id(drop)
-      para "You find a #{item.name} near the body: #{item.description}"
+      para "After surveying the carnage, you also find a #{item.name}: #{item.description}"
       player.inventory.add(drop)
     end
     pause
@@ -473,11 +496,20 @@ class Title < Scene
   def enter
     para 'LEGEND OF THE EVIL SPIX IV:', margin: 12
     para 'GHOSTS OF THE WASTES', margin: 16
-    12.times { newline }
+    5.times { newline }
     line 'Dedicated to the BBS door games of yore,', margin: 4, color: :secondary
     line 'and to friends new and old', margin: 4, color: :secondary
-    pause
-    proceed_to :town
+    5.times { newline }
+    choice :n, "Start a new game" do
+      proceed_to :town
+    end
+    choice :l, "Load a saved game" do
+      proceed_to :load
+    end
+    choice :q, "Quit" do
+      finish_scene
+    end
+    choose!
   end
 end
 
@@ -840,10 +872,10 @@ class Cooking < Scene
           @antagonize = -1
         end 
       end
-    end
 
-    choice :b, "See what's on the menu" do
-      proceed_to :barter, 'Cook', %i[hamburger slurpee]
+      choice :b, "See what's on the menu" do
+        proceed_to :barter, 'Cook', %i[hamburger slurpee]
+      end
     end
 
     choice :l, "Leave" do
@@ -889,6 +921,45 @@ class AssiniboineForest < Scene
       finish_scene
     end
     choose!
+  end
+end
+
+class Save < Scene
+  def enter
+    para 'You walk the edge of town until you find a comfortable, quiet place to rest.'
+    save_file = File.join(__dir__, 'saves', player.name.downcase)
+    File.write(save_file, player.serialize, mode: 'w')
+    pause
+    finish_scene
+  end
+end
+
+class Load < Scene
+  def enter
+    saves = Dir[File.join(__dir__, 'saves', '**')]
+    if saves.empty?
+      para 'No saves found!'
+      pause
+      finish_scene
+      return
+    end
+
+    para 'Choose a save:'
+    saves.each_with_index do |save, idx|
+      name = File.basename(save)
+      choice (idx+1).to_s, name do
+        load(save)
+      end
+    end
+    choose!
+  end
+
+  def load(file)
+    contents = File.read(file)
+    res = JSON.parse(contents)
+    owner.player = Player.new(**res)
+    
+    replace_to :winnipeg
   end
 end
 
