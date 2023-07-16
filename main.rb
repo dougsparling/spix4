@@ -173,6 +173,15 @@ class Inventory
       'eq_weapon': eq_weapon
     }
   end
+
+  def self.hydrate(hash)
+    hash[:eq_weapon] = hash[:eq_weapon]&.to_sym
+
+    invalid = [hash[:eq_weapon], hash[:items].keys].flatten.compact.select { |id| !Items.valid_id?(id) }
+    raise "hydration with invalid items: #{invalid}" unless invalid.empty?
+    
+    Inventory.new(**hash)
+  end
 end
 
 Player = Struct.new('Player', *player_fields, keyword_init: true) do
@@ -211,25 +220,16 @@ Player = Struct.new('Player', *player_fields, keyword_init: true) do
     Items.by_id(inventory.eq_weapon).effect_dice
   end
 
-  def serialize
+  def dehydrate
     data = to_h
-    data['inventory'] = @inventory.to_h
-    data.to_json
+    data[:inventory] = @inventory.to_h
+    data
   end
 
-  def self.deserialize_from(hash)
-    player_attrs = hash.clone.tap { |it| it.delete('inventory') }
+  def self.hydrate(hash)
+    player_attrs = hash.clone.tap { |it| it.delete(:inventory) }
     player = Player.new(**player_attrs)
-    
-    # symbolize keys since if loaded from json, might be strings (this is nasty)
-    # there's gotta be a better way
-    inv_hash = hash['inventory'] || {}
-    inv_hash = Hash[inv_hash.map { |k, v| [k.to_sym, v] }]
-    inv_hash[:eq_weapon] = inv_hash[:eq_weapon]&.to_sym
-    inv_hash = Hash[inv_hash.map { |k, v| [k.to_sym, v] }]
-    inv_hash[:items] = Hash[(inv_hash[:items] || {}).map { |k, v| [k.to_sym, v] }]
-    player.inventory = Inventory.new(**inv_hash)
-
+    player.inventory = Inventory.hydrate(hash[:inventory])
     player
   end
 
@@ -942,7 +942,7 @@ class Save < Scene
   def enter
     para 'You walk the edge of town until you find a comfortable, quiet place to rest.'
     save_file = File.join(__dir__, 'saves', player.name.downcase)
-    File.write(save_file, player.serialize, mode: 'w')
+    File.write(save_file, player.dehydrate.to_json, mode: 'w')
     pause
     finish_scene
   end
@@ -970,8 +970,8 @@ class Load < Scene
 
   def load(file)
     contents = File.read(file)
-    res = JSON.parse(contents)
-    owner.player = Player.deserialize_from(res)
+    hash = JSON.parse(contents, symbolize_names: true)
+    owner.player = Player.hydrate(hash)
     replace_to :winnipeg
   end
 end
