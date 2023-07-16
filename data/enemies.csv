@@ -1,6 +1,6 @@
 id,name,martial,evasion,hp,weapon,weapon_dmg,attack_verb,finisher,exp,cash,tags,level,habitat,drops
 bruiser,bruiser,11,6,15,fists,1d4,punches,"You finally land a decisive blow, knocking the bruiser onto a table, flinging glasses wildly around the bar!",5,4,plot,,,
-cook,pissed off cook,10,8,25,grease-covered spatula,1d12,slashes,"After scoring a dizzying blow, you slam the cook’s face down against the grill, until you hear a sizzle. You let us body fall limp onto the ground.",0,30,,1,,hamburger
+cook,pissed off cook,10,8,25,grease-covered spatula,1d12,slashes,"After scoring a dizzying blow, you slam the cook’s face down against the grill, until you hear a sizzle. You let us body fall limp onto the ground.",0,30,plot,1,,hamburger
 elf,elven boy,9,10,5,blow gun,1d3,shoots,"You stomp the boy beneath your boot, while reassuring yourself you’re a good person.",8,5,,1,forest,
 grandpa,twigged out grandpa,9,6,3,used syringe,2d4,stabs,"You pry the flailing old man off of you, and realize he’s dead before he hits the ground.",4,3,,1,forest,full_syringe
 scavenger,scavenger,12,11,15,recurve bow,1d6,shoots,You close within the scavenger’s guard and slam the bow forward into his skull.,10,25,,1,camp|forest,recurve_bow
@@ -10,3 +10,9 @@ brawny_scout,brawny scout,11,8,18,club,1d10,wildly swings,The chonky lad finally
 speedy_scout,speedy scout,13,11,12,switchblade,1d4,swipes,"The scout jumps and jives, and after your last blow, wails.",12,3,,2,hammond_perimeter,
 quadcopter,quadcopter,12,14,2,micro machine gun,1d4,fires,"You bait the drone into swinging down low, and finally connect hard enough to scatter it into tiny bits. You wonder who might be operating it...",15,0,,4,hammond_perimeter,
 octocopter,octocopter,12,14,3,dual micro machine guns,2d4,fires,"Your prolonged engagement eventually wears down its battery, and it drifts to the ground.",15,0,,4,hammond_perimeter,octocopter
+extortionate_drunk,tipsy fellow,9,7,7,broken bottle,1d4,thrusts,"After you whoop the bar-goer to the ground, he eventually coughs up the contact: an eccentric engineer named Craig inhabiting an abandoned electronics lab north of downtown.",0,3,plot,,,
+slugger_bot,slugger bot,8,7,15,spiked bat,1d8,swings,The slugger bot has a swing and a miss!,10,0,,1,price_electronics,
+flamer_bot,flamer bot,8,7,10,blowtorch,2d6,jets flame,"Your final blow ruptures a tank, causing the bot to explode in flame.",12,0,,3,price_electronics,
+cleaver_bot,spider bot,8,11,15,taser,2d4,shoots,The slugger bot has a swing and a miss!,15,0,,5,price_electronics,
+pincher_bot,pincer bot,7,7,18,hydraulic pincer,2d8,clamps down,"You dodge and its pincer grabs onto a nearby pipe, giving you ample time to bludgeon it into pieces.",20,0,,7,price_electronics,
+craig,Craig,12,12,24,grenades,2d6,detonates,"You dodge under another fistful of sand, and tackle Craig into the wall. He crumples to the ground as you pull back.",25,60,plot,,,

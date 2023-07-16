@@ -65,18 +65,6 @@ class Scene
     @owner.player
   end
 
-  def store
-    state_key = self.class.name.to_sym
-    owner.state[state_key] ||= {}
-    owner.state[state_key]
-  end
-
-  def globals
-    state_key = :globals
-    owner.state[state_key] ||= {}
-    owner.state[state_key]
-  end
-
   def record_roll(*args)
     line = ''
     args.each do |arg|
@@ -104,17 +92,35 @@ class Scene
     @did_first_on_enter = true
   end
 
-  def Scene.state_variable(name, initial: nil)
+  def Scene.state_variable(name, initial: nil, shared: false)
     define_method(name) do
-      store[name] || initial
+      state_key = if shared
+        :globals
+      else 
+        self.class.name.to_sym
+      end
+
+      owner.state[state_key] ||= {}
+      if owner.state[state_key].key?(name)
+        owner.state[state_key][name]
+      else
+        initial
+      end
     end
 
     define_method("#{name}=") do |new_val|
+      state_key = if shared
+        :globals
+      else 
+        self.class.name.to_sym
+      end
+      
       # don't store initial values
+      owner.state[state_key] ||= {}
       if new_val == initial
-        store.delete(name)
+        owner.state[state_key].delete(name)
       else
-        store[name] = new_val
+        owner.state[state_key][name] = new_val
       end
     end
   end

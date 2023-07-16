@@ -389,7 +389,7 @@ class Combat < Scene
     para foe.finisher
     pause
     if foe.cash.positive?
-      para "You pull #{foe.cash} dollars from the corpse of #{foe.name}."
+      para "You pull #{foe.cash} dollars from #{foe.name}."
       player.cash += foe.cash
       pause
     end
@@ -674,14 +674,13 @@ class IntroTownCasual < Scene
 end
 
 class Tavern < Scene
-  def initialize(intro = false)
-    @intro = intro
-  end
+  state_variable :found_price_eng, initial: false, shared: true
+  state_variable :intro, initial: true
 
   def enter
     para 'You find yourself inside a former sports bar -- broken televisions and torn pendants hang limply on the walls.'
 
-    if @intro
+    if intro
       para 'The regulars turn toward the commotion just to time to see the bruiser hit the ground, and collectivity murmur amongst themselves before turning back to their drinks.'
       para "The bartender's eyes flick between you and the man on the floor a few times."
       dialogue 'Bartender', 'Uhh, can I help you with something?'
@@ -692,12 +691,18 @@ class Tavern < Scene
 
     say :d, "I'm here to see Dylan" do
       dialogue 'Bartender', "Hmm, don't suppose I could stop you if I tried. He's in the back."
-      proceed_to :dylan, @intro
-      @intro = false
+      proceed_to :dylan
+      self.intro = false
     end
     drink_dialogue if player.cash >= 5
     
-    unless @intro
+    if !found_price_eng && player.inventory.has?(:octocopter)
+      choice :e, "Ask around if anybody is good with electronics." do
+        ask_about_electronics
+      end
+    end
+
+    unless intro
       choice 'Leave' do
         para 'You slap the bar, turn and leave.'
         finish_scene
@@ -734,12 +739,52 @@ class Tavern < Scene
       end
     end
   end
+
+  def ask_about_electronics
+    para 'You saddle up to the bar and place the octocopter in front of some regulars.'
+    drop_topic = false
+    while !found_price_eng && !drop_topic
+      say :a, "Anybody know how these things work?" do
+        dialogue "Drunk", "I might know a guy, for $50 I could introduce you."
+
+        if player.cash < 50
+          say :d, "I don't have $50." do
+            para "He shrugs and takes another sip from his drink."
+            pause
+          end
+        else
+          choice :d, "Slide him $50." do
+            player.cash -= 50
+            para "His eyes light up for a moment, then he plays it cool and slips the bills into his jacket."
+            dialogue "Drunk", "Alright pard'ner, look for a guy named Craig. Bit of a loner, you can find him in the ol' Price Electronics building just north of downtown."
+            self.found_price_eng = true
+            para "You thank him for his time and stand up, picking up the drone."
+            pause
+          end
+        end
+
+        choice :a, "Give him an ass-whoopin'" do
+          para 'You kick him off his stool and square up.'
+          proceed_to :combat, :extortionate_drunk
+          self.found_price_eng = true
+        end
+      end
+
+      say :t, "If I find out one of you sumbitches was flying this thing I'll kick your asses into the street." do
+        para "The regulars give each other a look and raise their hands in innocence."
+      end
+
+      say :d, "Drop the topic." do
+        para "You mumble a 'thanks anyway' and stuff the drone back into your pack."
+        drop_topic = true
+      end
+      choose!
+    end
+  end
 end
 
 class Dylan < Scene
-  def initialize(intro)
-    @intro = intro
-  end
+  state_variable :intro, initial: true
 
   def enter
     para "You enter Dylan's room, and you see a man sitting behind a desk -- one who clearly doesn't have as much trouble finding a meal as the other wasters around here."
@@ -749,7 +794,7 @@ class Dylan < Scene
     say 'What is it that you do here?' do
       dialogue 'Dylan', "I'm the mayor of this town, or what's left of it."
     end
-    if @intro
+    if intro
       show_spix_dialogue
     else
       show_regular_dialogue
@@ -786,6 +831,8 @@ class Dylan < Scene
         dialogue 'Dylan', "And finally, I'll let the people here know they can trust you, but cause trouble and you'll be face down on the road you came in on."
 
         para 'You nod, satisfied both at having finally extracted some useful information and at the chance to start cracking skulls again.'
+
+        self.intro = false
         finish_scene
       end
 
@@ -831,11 +878,18 @@ class GameOver < Scene
 end
 
 class Winnipeg < Scene
+  state_variable :found_price_eng, initial: false, shared: true
+
   def enter
     para 'You stand at the crossroads of the shanty town, sizing up the weathered population for any that might help you.'
 
     choice :f, 'Go to the forest' do
       proceed_to :assiniboine_forest
+    end
+    if found_price_eng
+      choice :p, 'Go to Price Electronics' do
+        proceed_to :price_electronics
+      end 
     end
     choice :t, 'Enter the tavern' do
       proceed_to :tavern
@@ -1025,10 +1079,10 @@ class Blacksmith < Scene
   def enter
     para 'You approach the source of all the racket around here, and an elderly wisp of a man wearing a faded t-shirt covered in foreign writing hammers relentlessly on a feeble looking knife.'
     dialogue 'Blacksmith', "Greetings weary traveler! Might thy wishest to, uh, partake in mine fine goods around yonder? Or is it 'thou'..."
-    para 'He mumbles to himself while you browse his offerings'
+    para 'He mumbles to himself while you browse his offerings.'
     pause
     finish_scene
-    proceed_to :barter, 'Blacksmith', %i[shovel knife]
+    proceed_to :barter, 'Blacksmith', %i[shovel knife wavy_sword]
   end
 end
 
@@ -1056,6 +1110,210 @@ class AssiniboineForest < Scene
       finish_scene
     end
     choose!
+  end
+end
+
+class PriceElectronics < Scene
+  # hidden -> hostile -> confront -> friendly -> dead?
+  state_variable :progress, initial: 'hidden'
+  state_variable :guards, initial: 3
+  state_variable :pizza, initial: true
+  state_variable :encyclopedia, initial: true
+
+  def enter
+    first_enter do
+      para "You find the Price Electronics building roughly where the drunk had said it would be. The massive structure must have once housed hundreds of employees, and is oddly untouched by the decay that grips the rest of the city. Perhaps this 'Craig' you're looking for is maintaining the property."
+      pause
+      para "You decide to play it safe and approach from the rear, entering through a unlocked loading bay."
+      pause
+    end if progress == 'hidden'
+
+    case progress
+    when 'empty'
+      para "This building seems somehow lifeless now that it's sole biological occupant has died."
+      if player.inventory.has?(:encyclopedia) && player.inventory.has?(:octocopter)
+        choice :w, "Use the workshop" do
+          para "With no further leads to persue, you reckon you'll have to use the principles found in the encyclopedia you picked up to understand the octocopter drone."
+          pause
+          finish_scene
+        end
+      end
+      choice :l, "Leave" do
+        finish_scene
+      end
+
+      choose!
+      return
+    when 'confront'
+      confront_dialogue
+      return
+    when 'hostile'
+      para "You stand in the loading bay, alert to danger now that you know you've been discovered."
+    when 'hidden'
+      para "You stand in a vast loading bay, long since stripped of any immediately useful eqipment. Remaining are only drums of curious chemicals, scrap metal and other detritus. Light streams in through the bay windows, and you can see signs for administrative offices, a workshop, and an assembly bay."
+    end
+
+    choice :o, "Explore the offices" do
+      offices
+    end
+    choice :w, "Explore the workshop" do
+      workshop
+    end
+    choice :a, "Explore the assembly bay" do
+      assembly_bay
+    end
+    choice :l, "Leave" do
+      finish_scene
+    end
+    choose!
+  end
+
+  def offices
+    para "You proceed into the administrative area, which are filled with the sort of grey, drab cubes that inexplicably fill most of the abandoned office space you have explored."
+    pause
+    if pizza
+      para "You turn next into a kitchen nook, and a smell lingers in the air. A knot forms in your stomach, both from hunger and tension, as you see a hot, half-eaten pizza on a plate. It seems to have been abandoned in haste."
+      
+      choice :e, "Eat the pizza" do
+        para "You haven't had a proper pizza in years, and you marvel at the good fortune of finding it here."
+        player.heal(5)
+        self.pizza = false
+        line "Recovered 5 HP!", color: :secondary
+        pause
+        para "While stuffing your face, you apparently failed to notice a machine silently roll into the room, which upon being noticed charges into you at full speed!"
+        pause
+        self.progress = 'hostile'
+        fight_minion
+      end
+    end
+
+    choice :r, "Continue to search" do
+      roll = d(3).roll.total
+
+      if progress != 'hostile' || roll == 3
+        if encyclopedia
+          para "While searching the cubes, you find a general encyclopedia on the principles of electronics and machinery. You've learned that knowledge is power out in the wastes, and slide it into your pack."
+          player.inventory.add(:encyclopedia)
+          self.encyclopedia = false
+          pause
+        else
+          para "You conduct another sweep of the cubes, but find nothing."
+          pause
+        end
+      else
+        para "A machine suddenly bursts through a cube wall!"
+        pause
+        fight_minion
+      end
+    end
+    choose!
+  end
+
+  def workshop
+    para "The workshop has a number of angled tables, full of drafting tools and detailed schematics. You walk through, taking in some of the diagrams and writings. They appear to describe autonomous machines of some sort, but have been revised in pencil after printing, adding weapons and other implements."
+    if progress == 'hostile'
+      para "As you come around a desk, a robot tackles you!"
+      pause
+      fight_minion
+    elsif encyclopedia
+      para "You conduct a thorough search, but little of interest can be found here."
+      pause
+    else
+      para "While shuffling through some blueprints on a desk, you hear a voice cry out from behind you."
+      dialogue 'Man', "Hey! You're the jerk who took my favourite encyclopedia!"
+      pause
+      para "The absurdity of the comment catches you off-guard, and before you can recover, a machine is barreling toward you!"
+      pause
+      self.progress = 'confront'
+      fight_minion
+    end
+  end
+
+  def assembly_bay
+    para "You enter the assembly bay, which is large enough that it must occupy most of the building's interior. Crates and other discarded machinery are stacked haphazardly throughout."
+    if progress == 'hostile'
+      para "Suddenly, a machine flies from the top of one of the stacks, crashing down beside you!"
+      pause
+      fight_minion
+    elsif
+      para "You conduct a thorough search, and eventually find some dangerous looking machines lined up against a wall, hooked up to some kind generator."
+      choice :d, "Disconnect the machines" do
+        para "Suspecting them to be dangerous, you start unplugging the machines. Suddenly, an alarm starts blaring and one of them springs to life!"
+        self.guards -= 1
+        self.progress = 'hostile'
+        pause
+        fight_minion
+      end
+      choice :l, "Leave them alone" do
+        para "You examine but otherwise leave the machines alone."
+        pause
+      end
+      choose!
+    end
+  end
+
+  def confront_dialogue
+    if guards > 0
+      para "Your eyes sweep the area for threats after dispatching the last killing machine, and you notice a man skulking in the shadows, light gleaming off a device of some kind."
+
+      say :t, "Let's talk this out like adults, there's no need for violence!" do
+        if pizza || guards < 2
+          para "The room is dead silent for a moment, and the man straightens."
+          dialogue 'Man', "Very well! I'll hear you out. Let's talk in my office."
+          pause
+          make_peace
+        else
+          dialogue 'Man', "What?! I refuse to negotiate with pizza-theives!"
+          para "The man fiddles with the device and you hear the high pitch droning of more machines on the way."
+          pause
+          fight_minion
+          self.guards -= 1
+        end
+      end
+      choice :a, "Charge at the man" do
+        fight_minion
+        self.guards -= 1
+      end
+      choose!
+    else
+      para "The man panics, his hands rapidly working the device, but no other sounds can be heard."
+      pause
+      para "You flick stray shreds of metal dust casually from your arm, and walk slowly toward the man for effect."
+      pause
+      dialogue 'Man', "Now now, let's not be too hasty! After all, you're the one who barged into my home, I can't be faulted for defending myself"
+      say :t, "Home... so you must be Craig. Let's call a truce then, I only came here to talk." do
+        dialogue 'Craig', "Yes, that's me. I have many questions for you as well, let's talk more in my office."
+        pause
+        make_peace
+      end
+      say :w, "The time for talk passed when you sicced those stupid machines on me!" do
+        craig = Foes.by_id(:craig)
+        craig.drops = :encyclopedia if encyclopedia
+        proceed_to :combat, craig
+        self.progress = 'empty'
+      end
+      choose!
+    end
+
+    def make_peace
+      self.progress = 'friendly'
+      replace_to :craigs_office
+    end
+  end
+
+  def fight_minion
+    proceed_to :combat, Foes.random_encounter(:price_electronics, level_max: player.level)
+    if progress == 'hostile' && d(3).roll.total == 3
+      self.progress = 'confront'
+    end
+  end
+end
+
+class CraigsOffice < Scene
+  def enter
+    para "You enter into the office. Blah blah."
+    pause
+    finish_scene
   end
 end
 
