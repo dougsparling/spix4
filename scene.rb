@@ -1,7 +1,7 @@
 require 'forwardable'
 
 class SceneOwner
-  attr_reader :window, :player
+  attr_reader :window, :player, :state
   attr_writer :player
 
   def initialize(window)
@@ -39,6 +39,15 @@ class SceneOwner
   def finish_scene
     @scenes.pop unless @scenes.empty?
   end
+
+  def dehydrate
+    { scene_state: @state, player: @player.dehydrate }
+  end
+
+  def hydrate(hash)
+    @state = hash[:scene_state]
+    @player = Player.hydrate(hash[:player])
+  end
 end
 
 class Scene
@@ -54,6 +63,18 @@ class Scene
 
   def player
     @owner.player
+  end
+
+  def store
+    state_key = self.class.name.to_sym
+    owner.state[state_key] ||= {}
+    owner.state[state_key]
+  end
+
+  def globals
+    state_key = :globals
+    owner.state[state_key] ||= {}
+    owner.state[state_key]
   end
 
   def record_roll(*args)
@@ -81,5 +102,20 @@ class Scene
 
     yield
     @did_first_on_enter = true
+  end
+
+  def Scene.state_variable(name, initial: nil)
+    define_method(name) do
+      store[name] || initial
+    end
+
+    define_method("#{name}=") do |new_val|
+      # don't store initial values
+      if new_val == initial
+        store.delete(name)
+      else
+        store[name] = new_val
+      end
+    end
   end
 end

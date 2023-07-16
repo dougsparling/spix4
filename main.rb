@@ -966,44 +966,45 @@ class LevelUp < Scene
 end
 
 class Cooking < Scene
-  def initialize
-    @antagonize = 1
-  end
+  state_variable :antagonize, initial: 0
 
   def enter
-    first_enter do
-      para "You approach a building with a long corregated steel awning. Numbers that you presume once described the shop's operating hours read '7-11'."
-      para "Underneath the awning, a weathered man works a fowl-smelling grill. Tapping his spatula against the surface a few times, he turns to face you."
-    end
-
-    if @antagonize < 0
+    if antagonize < 0
       para "The cook lays broken by the grill."
 
-      choice :s, "Steal whatever food is prepped." do
-        player.inventory.add(:hamburger, d(4).roll.total)
-        player.inventory.add(:slurpee, d(4).roll.total)
-        para "You throw your open pack onto the back of the cook, and steal everything on the order counter. At this point you hear murmurs from a forming crowd, so you make a hasty exit."
-        pause
-        finish_scene
+      if antagonize == -1
+        choice :s, "Steal whatever food was already prepped." do
+          player.inventory.add(:hamburger, d(4).roll.total)
+          player.inventory.add(:slurpee, d(4).roll.total)
+          para "You throw your open pack onto the back of the cook, and steal everything on the order counter. At this point you hear murmurs from a forming crowd, so you make a hasty exit."
+          pause
+          self.antagonize = -2
+          finish_scene
+        end
       end
     else
+      first_enter do
+        para "You approach a building with a long corregated steel awning. Numbers that you presume once described the shop's operating hours read '7-11'."
+        para "Underneath the awning, a weathered man works a fowl-smelling grill. Tapping his spatula against the surface a few times, he turns to face you."
+      end
+      
       dialogue 'Cook', "Yeah, what'll it be?"
 
       say "Is this safe to eat?!" do
         para 'He smiles broadly and leans across the counter toward you.'
         dialogue 'Cook', "Listen punk, you don't want to get on my bad side. I'm gonna ignore that and ask again since I assume you wouldn't be here unless you're hungry: what'll you have?"
-        @antagonize += 1
+        self.antagonize += 1
         pause
       end
   
-      if @antagonize > 3
+      if antagonize > 3
         say "Are there no other customers here because they've all died?" do
           para "The cook, finally reaching the limit of verbal abuse he's willing to tolerate, slams the spatula onto the counter."
           dialogue 'Cook', "You motherfucker, what did I tell you?"
           para 'And with that he effortlessly leaps the counter and swings at you!'
           pause
           proceed_to :combat, :cook
-          @antagonize = -1
+          self.antagonize = -1
         end 
       end
 
@@ -1062,7 +1063,7 @@ class Save < Scene
   def enter
     para 'Within the relative safety of the town, you find a comfortable, quiet place to rest.'
     save_file = File.join(__dir__, 'saves', player.name.downcase)
-    File.write(save_file, player.dehydrate.to_json, mode: 'w')
+    File.write(save_file, owner.dehydrate.to_json, mode: 'w')
     pause
     finish_scene
   end
@@ -1091,7 +1092,7 @@ class Load < Scene
   def load(file)
     contents = File.read(file)
     hash = JSON.parse(contents, symbolize_names: true)
-    owner.player = Player.hydrate(hash)
+    owner.hydrate(hash)
     replace_to :winnipeg
   end
 end
