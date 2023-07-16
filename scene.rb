@@ -5,12 +5,10 @@ class SceneOwner
   attr_writer :player
 
   def initialize(window)
-    # TODO: player should be part of larger state maybe?
-    #       and should come from a save instead of being created fresh...
-    @player = Player.fresh_off_the_boat
     @scenes = []
     @window = window
-    # @window.refresh
+    @state = {}
+    @player = nil
   end
 
   def main_loop
@@ -47,8 +45,8 @@ class Scene
   extend Forwardable
   attr_accessor :owner
 
-  def_delegators :window, :choice, :dialogue, :say, :choose!, :line, :para, :newline, :pause, :blank
-  def_delegators :@owner, :proceed_to, :replace_to, :finish_scene
+  def_delegators :window, :choice, :dialogue, :say, :choose!, :line, :para, :newline, :pause, :blank, :prompt
+  def_delegators :owner, :proceed_to, :replace_to, :finish_scene
 
   def window
     @owner.window
@@ -76,6 +74,7 @@ class Scene
   end
 
   # only called on the initial entry to a scene, not subsequent re-enters
+  # (until the scene is popped and entered anew)
   def first_enter
     @did_first_on_enter ||= false
     return if @did_first_on_enter

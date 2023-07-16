@@ -3,7 +3,7 @@ slurpee,slurpee,One of Winnipeg's famed iced cola beverages. ,3,1d4,heal
 hamburger,hamburger,Two buns past their prime cradle a wad of what you hope is animal meat.,8,1d6,heal
 first_aid,first aid kit,A small pack of sundry items that somehow allow the user to heal serious wounds in the heat of combat.,3,2d6,heal
 full_syringe,full syringe,A syringe full of neon-coloured liquid.,1,2d3,grenade
-shovel,shovel,"A sturdy shovel. Could be used to dig a grave, if you’re into that.",15,1d6,weapon
+shovel,shovel,"A sturdy shovel. Could be used to dig a grave, if you’re into that.",15,1d4,weapon
 recurve_bow,recurve bow,"A well-worn but serviceable bow, and an ample quiver of sturdy arrows that can be recovered after battle.",40,1d8,weapon|fancy
 knife,knife,A poorly made but otherwise usable knife. May be thrust through lighter armours.,20,1d6,weapon
 scouts_note,scout’s note,A map of Assiniboine forest with a perimeter marked. You suspect something important can be found within it.,,,

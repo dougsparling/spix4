@@ -23,9 +23,10 @@ module Combatant
   end
 
   def skill_check(recorder, skill, modifier: 0)
-    target = self[skill] || 0
-
-    if target.zero?
+    target = nil
+    if trained_in?(skill)
+      target = self[skill]
+    else
       defaulted, default_mod = default_of(skill)
       if defaulted
         recorder[name.capitalize, " untrained in #{skill}, defaults to #{defaulted} + #{default_mod}"]
@@ -37,11 +38,14 @@ module Combatant
         target = 7
       end
     end
-
     
     result = Dice.new(6, times: 3).roll
     recorder[name.capitalize, " rolling #{skill} against #{target} + #{modifier}: ", result]
     [result.total <= target + modifier, result]
+  end
+
+  def trained_in?(skill)
+    !(self[skill].nil? || self[skill].zero?)
   end
 
   def default_of(skill)
@@ -236,7 +240,7 @@ Player = Struct.new('Player', *player_fields, keyword_init: true) do
   end
 
   def weapon
-    get_weapon&.name || 'Fists'
+    get_weapon&.name || 'fists'
   end
 
   def weapon_dmg
@@ -278,9 +282,9 @@ Player = Struct.new('Player', *player_fields, keyword_init: true) do
       exp: 0,
       level: 1,
       cash: 5,
-      hp: 15,
-      max_hp: 15,
-      martial: 12,
+      hp: 12,
+      max_hp: 12,
+      martial: 9,
       evasion: 7
     )
     player.inventory.add(:first_aid, 3)
@@ -450,8 +454,7 @@ class Barter < Scene
       end
     end
 
-    choice :l, 'Leave' do
-      para 'You politely gaze about as if considering a purchase, then leave'
+    choice :f, 'Finished' do
       finish_scene
     end
 
@@ -514,8 +517,13 @@ class Camp < Scene
 
     case rand(40)
     when 1..20
-      para 'You enjoy a deep and uninterrupted sleep'
-      line 'HP fully recovered!', color: :secondary
+      if player.hp > player.max_hp
+        para "You enter a restless sleep as the effects of the alcohol progress"
+        line 'You awaken with a hangover', color: :secondary
+      else
+        para 'You enjoy a deep and uninterrupted sleep'
+        line 'HP fully recovered!', color: :secondary
+      end
       player.hp = player.max_hp
       pause
       finish_scene
@@ -526,6 +534,9 @@ class Camp < Scene
       proceed_to :combat, Foes.random_encounter(:camp, level_max: player.level)
     when 31..38
       para 'However, distant but unnerving noises interrupt your sleep throughout the night.'
+      recovered = [d("2d4").roll.total, player.max_hp - player.hp].min
+      line "Recovered #{recovered} HP!", color: :secondary
+      player.hp = player.max_hp
       pause
       finish_scene
     else
@@ -545,7 +556,7 @@ class Title < Scene
     line 'and to friends new and old', margin: 4, color: :secondary
     5.times { newline }
     choice :n, "Start a new game" do
-      proceed_to :town
+      proceed_to :intro
     end
     choice :l, "Load a saved game" do
       proceed_to :load
@@ -557,26 +568,67 @@ class Title < Scene
   end
 end
 
-class Town < Scene
+class Intro < Scene
   def enter
-    para 'You stand on a crumbling highway, having walked for days and finally found civilization. A faded sign shows the former name of this place: Winnipeg'
-    para 'Half an hour of walking reveals little of interest, beyond the crumbling buildings that line the horizon and scraps of passed over trash'
-    para 'But, as the last gang of wanderers had informed you, the telltale signs of residence reveal themselves ahead: smoke from the stacks, the occasional clang of metal on metal.'
+    first_enter do
+      owner.player = Player.fresh_off_the_boat
+    end
+
+    para 'Years of hard travel and violence have brought you to the seated blind man before you.'
+    para 'He smiles and opens his arms, sensing your approach.'
+    dialogue 'Man', 'To whom do I have the pleasure of speaking?'
+    name = prompt 'Name'
+    owner.player.name = name
+    dialogue 'You', "Call me #{name}, if it pleases you."
+    dialogue 'Man', "It does. Pleased to meet you, #{name}. Must have been a difficult journey through the wastes to end up here."
+
+    say "I've buried a few people along the way." do
+      player.martial += 2 
+    end
+    say "Danger is easily avoided if one is ready for it." do
+      player.evasion += 2 
+    end
+    say "Taken my fair share of bruises, that's for sure." do
+      player.max_hp += 6 
+      player.hp += 6 
+    end
+    choose!
+
+    para "The man ponders what you've said."
+    dialogue 'Man', "Suppose you wouldn't be here otherwise. So what can I do for you? Few if any would come all this way if they had a choice."
+    dialogue 'You', "I'm seeking any who might hold the secret to the destruction of the Spix."
+    dialogue 'Man', "Ahh, there have been a great number before you, and I'm sure there will be a great number after. No matter, I know there is nothing this bitter old man can do to deter you. Rumour has it there is still one who can help --"
+    para 'He gestures to a ruined road running north.'
+    pause
+
+    dialogue 'Man', "One great city lies in ruin at the end of the road. There are survivors eeking out a living, who will know of one named 'Dylan'. Don't expect them to take kindly to outsiders, #{name}."
+    para 'You offer brief thanks to the man, and start walking.'
+    pause
+
+    replace_to :intro_town
+  end
+end
+
+class IntroTown < Scene
+  def enter
+    para 'You stand on a crumbling highway, having walked for days and finally found civilization. A faded sign shows the former name of this place: Winnipeg.'
+    para 'Half an hour of walking beyond the sign reveals little of interest, beyond crumbling buildings that line the horizon and scraps of passed over trash.'
+    para 'But, as the blind man had informed you, the telltale signs of residence reveal themselves ahead: smoke from the stacks, the occasional clang of metal on metal.'
 
     para 'How do you approach?'
 
     choice 'Casually stroll in and confront your quarry' do
-      replace_to :town_casual
+      replace_to :intro_town_casual
     end
     choice 'Sneak into the city and try to find clues' do
-      replace_to :town_cautious
+      replace_to :intro_town_cautious
     end
 
     choose!
   end
 end
 
-class TownCautious < Scene
+class IntroTownCautious < Scene
   def enter
     para 'You drop low and skirt the edge of the shanty, pausing frequently to assess whether or not anybody has seen you approach...'
     pause
@@ -590,7 +642,7 @@ class TownCautious < Scene
     pause
 
     bruiser = Foes.by_id(:bruiser)
-    bruiser.injure(10)
+    bruiser.injure(7)
 
     replace_to :winnipeg
     proceed_to :tavern, true
@@ -598,7 +650,7 @@ class TownCautious < Scene
   end
 end
 
-class TownCasual < Scene
+class IntroTownCasual < Scene
   def enter
     bruiser = Foes.by_id(:bruiser)
 
@@ -638,37 +690,42 @@ class Tavern < Scene
       dialogue 'Bartender', 'Aye, what do ye want?'
     end
 
-    say "I'm here to see Dylan" do
+    say :d, "I'm here to see Dylan" do
       dialogue 'Bartender', "Hmm, don't suppose I could stop you if I tried. He's in the back."
       proceed_to :dylan, @intro
+      @intro = false
     end
     drink_dialogue if player.cash >= 5
-    choice 'Leave' do
-      para 'You slap the bar, turn and leave.'
-      finish_scene
+    
+    unless @intro
+      choice 'Leave' do
+        para 'You slap the bar, turn and leave.'
+        finish_scene
+      end
     end
     choose!
     pause
   end
 
   def drink_dialogue
-    choice :d, "(slide $5 across the bar) I'll have whatever's on tap" do
+    choice :b, "(slide $5 across the bar) I'll have whatever's on tap" do
       player.pay(5)
       dialogue 'Bartender', 'Hah, been awhile since I tapped anything, but let me fix you a drink...'
       case rand(40)
-      when 0..30
+      when 0..34
         para 'He hands you a glass of liquid that you presume must be beer.'
         player.hp += 3
-        line 'Recovered 3 HP.', color: :secondary
-      when 31..34
+        line '+2 bonus HP.', color: :secondary
+      when 35..37
         para 'He serves you a tumbler full of rocks and a clear liquid'
         dialogue 'Bartender', 'You said you wanted it on the rocks, right?'
         player.hp += 2
-        line 'Recovered 5 HP.', color: :secondary
-      when 35..38
+        line '+4 bonus HP.', color: :secondary
+      when 38
         para 'To your surprise, he places an honest to god bottle of unopened craft beer on the bar and slides you a bottle opener. You look up in disbelief, and the bartender winks at you.'
         dialogue 'Bartender', "Rumour has it you're here to kill the Spix, may as well enjoy your last days on earth, eh?"
         player.max_hp += 1
+        player.hp += 1
         line 'Max HP up!', color: :secondary
       else
         dialogue 'Bartender', "Friend, I think you've had enough. Go get some air."
@@ -697,10 +754,6 @@ class Dylan < Scene
     else
       show_regular_dialogue
     end
-    choice 'Leave' do
-      para 'You excuse yourself and leave Dylan in peace.'
-      finish_scene
-    end
     choose!
     pause
   end
@@ -718,18 +771,19 @@ class Dylan < Scene
         para 'He stops massaging his forehead for a moment and chuckles.'
         dialogue 'Dylan', "Huh, I'm surprised there are any whispers of my old reputation these days. Well, it's true, there is something I could do."
         pause
-        para 'He stands, stretching, and turns to look out the single, grimy window above his desk'
+        para 'He stands, stretching, and turns to look out the single, grimy window above his desk.'
         dialogue 'Dylan', "There was a time when things weren't like this, you know..."
         pause
-        para "Your eyes begin wandering the room awkwardly while his self-indulgant monologing rolls on, and after a few minutes, you suddenly realize he's finished by the intense stare he's giving you."
 
-        say "Of course, whatever you need, I'm your guy!"
+        blank
+        para "Your eyes begin wandering the room awkwardly while his self-indulgant monologing rolls on, and after a few minutes, you suddenly realize he has finished by the intense stare he's giving you."
+        say "Uh, of course, let's do whatever you just said."
         say 'Sorry, I got distracted for a minute looking at your impressive, uh, dust collection.'
         choose!
 
-        dialogue 'Dylan', "Right... anyway, as I saying, just bring me the weapon fragments of Hammond's Rifle, and I'll re-assemble it. You'll be on your own after that. Hammond's lab was supposedly underground in a treed park somewhere, I suggest starting at Assiniboine forest, though it's overrun with raiders and other nasties these days."
-
+        dialogue 'Dylan', "Right... anyway, as I saying, Hammond started this whole mess with his work prototyping the early Spix, and he must have kept detailed notes. Bring them to me, and I'll take it from there. Hammond's lab was supposedly underground in Assiniboine forest, though it's overrun with raiders and other nasties these days."
         dialogue 'Dylan', "Also, as you make progress toward our shared goals, report back to me periodically and I'll teach you whatever else I can to aid you."
+        dialogue 'Dylan', "And finally, I'll let the people here know they can trust you, but cause trouble and you'll be face down on the road you came in on."
 
         para 'You nod, satisfied both at having finally extracted some useful information and at the chance to start cracking skulls again.'
         finish_scene
@@ -740,10 +794,10 @@ class Dylan < Scene
   end
 
   def show_regular_dialogue
-    say 'Any words of wisdom?' do
+    choice "Deliver a short report on what you've been up to" do
       if player.ready_to_level_up?
-        para 'He gives you a critical look.'
-        dialogue 'Dylan', "It does seem you're making a name for yourself here. Perhaps you can be taught after all."
+        para 'He closes his eyes, nodding as he follows along.'
+        dialogue 'Dylan', "You're making good progress here. Let me offer you some advice..."
         choice :l, 'Level up!' do
           proceed_to :level_up
         end
@@ -751,8 +805,19 @@ class Dylan < Scene
           # do nothing
         end
       else
-        para 'He raises an eyebrow at you, and looks down, resuming his writing.'
+        para 'After listening to your brief update, he gives you a disappointed look.'
+        dialogue 'Dylan', "I see. Well, keep pressing on and I'm sure something will turn up."
+        pause
       end
+    end
+    say 'Any words of wisdom?' do
+      para 'He raises an eyebrow at you, and looks down, resuming his writing.'
+      pause
+    end
+
+    choice 'Leave' do
+      para 'You excuse yourself and leave Dylan in peace.'
+      finish_scene
     end
   end
 end
@@ -799,19 +864,24 @@ class CharacterSheet < Scene
 
     para "#{player.hp} / #{player.max_hp} HP"
 
-    line "Level: #{player.level}"
-    para "Exp: #{player.exp} / #{player.next_level_exp}"
+    line "Level: #{player.level} ~ Exp: #{player.exp} / #{player.next_level_exp}"
 
     para "Cash: $#{player.cash}"
 
-    %i[martial evasion].each do |skill|
-      line "#{skill.to_s.capitalize} Skill: #{player[skill]}"
+    %i[martial evasion fancy unarmed].each do |skill|
+      if player.trained_in?(skill)
+        line "#{skill.to_s.capitalize} skill: #{player[skill]}"
+      else
+        defaulted, default_mod = player.default_of(:fancy)
+        current = player[defaulted] + default_mod
+        line "#{skill.to_s.capitalize} skill: untrained (defaulting at #{current})"
+      end
     end
     newline
-    line "Weapon: #{player.weapon}"
-    line 'Armour: None'
+    line "Weapon: #{player.weapon} ~ Armour: None"
     newline
     choice :w, 'Equip weapon' do
+      blank
       weapons = player.inventory.filter { |_, item| item.tagged?(:weapon) }
       if weapons.empty?
         line "Seems you don't have any implements of violence among your meager posseessions."
@@ -871,6 +941,18 @@ class LevelUp < Scene
     end
     choice :h, "Train body (#{player.max_hp} -> #{player.max_hp + 3} HP)" do
       player.max_hp += 3
+    end
+    
+    if player.trained_in?(:fancy)
+      choice :f, "Train with fancy weapon skill (#{player.fancy} -> #{player.fancy + 1})" do
+        player.fancy += 1
+      end
+    elsif !player.inventory.by_tag(:fancy).empty?
+      defaulted, default_mod = player.default_of(:fancy)
+      current = player[defaulted] + default_mod
+      choice :f, "Train with fancy weapon skill (#{current} -> 7)" do
+        player.fancy = 7
+      end
     end
 
     choose!
@@ -953,7 +1035,7 @@ class AssiniboineForest < Scene
   def enter
     first_enter do
       para 'You walk into the forest, and the trees dampen the sunlight and noise.'
-      para 'The air smells a little cleaner here than the muggy, sand-filled piss of a breeze in town.'
+      para 'The air smells a little cleaner here than the muggy, piss of a breeze in town.'
     end
 
     para 'Pressing deeper into the forest, you get the sense danger lurks around every bend in the trail.'
@@ -978,7 +1060,7 @@ end
 
 class Save < Scene
   def enter
-    para 'You walk the edge of town until you find a comfortable, quiet place to rest.'
+    para 'Within the relative safety of the town, you find a comfortable, quiet place to rest.'
     save_file = File.join(__dir__, 'saves', player.name.downcase)
     File.write(save_file, player.dehydrate.to_json, mode: 'w')
     pause

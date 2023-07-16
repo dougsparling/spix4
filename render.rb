@@ -1,8 +1,6 @@
 require 'curses'
 require 'io/console'
 
-include Curses
-
 # functionality that doesn't rely on a particular renderer
 class BaseWindow
   def say(key_or_text, text_with_key = nil, &block)
@@ -63,6 +61,12 @@ class PlainWindow < BaseWindow
     puts(text)
   end
 
+  def prompt(label = "")
+    @stdout.print("#{prompt}> ")
+    @stdout.flush
+    $stdin.gets
+  end
+    
   def para(text, width: 0, margin: 0)
     line(text)
     newline
@@ -80,6 +84,8 @@ end
 
 # abstraction over the awfulness that is curses
 class CursesWindow < BaseWindow
+  include Curses
+
   def initialize
     # one-time setup needed before buidling curses windows
     @@curses_init_done ||= false
@@ -162,7 +168,8 @@ class CursesWindow < BaseWindow
       word = words.shift
       line += word
 
-      if words.empty? || words.first.size + line.size + margin >= width
+      # TODO: + 1 is a hack but curses is so horrible my god
+      if words.empty? || words.first.size + line.size + margin + 1 >= width
         @current.setpos(@current.cury, margin)
 
         # TODO: hack for curses inserting newlines itself, grr
@@ -190,6 +197,17 @@ class CursesWindow < BaseWindow
         next
       end
     end
+  end
+
+  def prompt(label = "")
+    @current << label << "> "
+    str = ''
+    echo
+    while str.empty?
+      str = @current.getstr
+    end
+    noecho
+    str
   end
 
   def para(text, width: @current.maxx, margin: 0)
