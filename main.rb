@@ -23,10 +23,36 @@ module Combatant
   end
 
   def skill_check(recorder, skill, modifier: 0)
-    target = self[skill]
+    target = self[skill] || 0
+
+    if target.zero?
+      defaulted, default_mod = default_of(skill)
+      if defaulted
+        recorder[name.capitalize, " untrained in #{skill}, defaults to #{defaulted} + #{default_mod}"]
+        target = self[defaulted] + default_mod
+        skill = defaulted
+      else
+        default_target = 10 + default_mod
+        recorder[name.capitalize, " #{skill} untrained and has no default, target #{default_target}"]
+        target = 7
+      end
+    end
+
+    
     result = Dice.new(6, times: 3).roll
     recorder[name.capitalize, " rolling #{skill} against #{target} + #{modifier}: ", result]
     [result.total <= target + modifier, result]
+  end
+
+  def default_of(skill)
+    case skill
+    when :fancy
+      [:martial, -3]
+    when :unarmed
+      [:martial, -2]
+    else
+      [nil, -3]
+    end
   end
 
   def contest(recorder, other, skill, modifier: 0)
@@ -48,7 +74,7 @@ module Combatant
   end
 
   def strike(recorder, other, modifier: 0)
-    hit, martial_roll = skill_check(recorder, :martial, modifier: modifier)
+    hit, martial_roll = skill_check(recorder, weapon_skill, modifier: modifier)
 
     return [:miss, martial_roll] unless hit
 
@@ -87,7 +113,7 @@ Item = Struct.new('Item', :name, :description, :value, :combat, :effect_dice, :t
 end
 
 attrs = %i[name cash hp max_hp]
-skills = %i[martial evasion]
+skills = %i[martial evasion fancy unarmed]
 foe_fields = %i[exp attack_verb weapon weapon_dmg finisher drops level habitat tags] + attrs + skills
 
 Foe = Struct.new('Foe', *foe_fields, keyword_init: true) do
@@ -97,6 +123,10 @@ Foe = Struct.new('Foe', *foe_fields, keyword_init: true) do
   def initialize(args)
     super(**args)
     @max_hp = hp
+  end
+
+  def weapon_skill
+    :martial
   end
 
   def tagged?(tag)
@@ -131,7 +161,7 @@ class Inventory
   end
 
   def equip_weapon(weapon)
-    return unless items.key?(weapon)
+    return unless weapon.nil? || items.key?(weapon)
     @eq_weapon = weapon
   end
 
@@ -155,7 +185,7 @@ class Inventory
   end
 
   def remove(item)
-    return unless @items.key?(item)
+    raise "removing item we don't have: #{item}" unless @items.key?(item)
 
     @items[item] -= 1
 
@@ -167,11 +197,8 @@ class Inventory
     @eq_weapon = nil
   end
 
-  def to_h
-    {
-      'items': items,
-      'eq_weapon': eq_weapon
-    }
+  def dehydrate
+    { items: items, eq_weapon: eq_weapon }
   end
 
   def self.hydrate(hash)
@@ -209,20 +236,32 @@ Player = Struct.new('Player', *player_fields, keyword_init: true) do
   end
 
   def weapon
-    return 'Fists' unless inventory.eq_weapon
-
-    Items.by_id(inventory.eq_weapon).name
+    get_weapon&.name || 'Fists'
   end
 
   def weapon_dmg
-    return d(4) unless inventory.eq_weapon
+    get_weapon&.effect_dice || d(4)
+  end
 
-    Items.by_id(inventory.eq_weapon).effect_dice
+  def get_weapon
+    return nil if inventory.eq_weapon.nil?
+    Items.by_id(inventory.eq_weapon)
+  end
+
+  def weapon_skill
+    w = get_weapon
+    if w.nil?
+      :unarmed
+    elsif w.tagged?(:fancy)
+      :fancy
+    else
+      :martial
+    end
   end
 
   def dehydrate
     data = to_h
-    data[:inventory] = @inventory.to_h
+    data[:inventory] = @inventory.dehydrate
     data
   end
 
@@ -304,7 +343,6 @@ class Combat < Scene
       cancel = rummage_through_inventory
       return if cancel
     end
-
     choice 'Escape' do
       did_run, = player.contest(recorder, foe, :evasion, modifier: 4)
 
@@ -918,7 +956,7 @@ class AssiniboineForest < Scene
       para 'The air smells a little cleaner here than the muggy, sand-filled piss of a breeze in town.'
     end
 
-    para 'Pressing deeper into the forest, you get the sense danger lurks around every corner.'
+    para 'Pressing deeper into the forest, you get the sense danger lurks around every bend in the trail.'
 
     choice :e, 'Explore' do
       proceed_to :combat, Foes.random_encounter(:forest, level_max: player.level)
