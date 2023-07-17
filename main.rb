@@ -117,7 +117,7 @@ Item = Struct.new('Item', :name, :description, :value, :combat, :effect_dice, :t
 end
 
 attrs = %i[name cash hp max_hp]
-skills = %i[martial evasion fancy unarmed]
+skills = %i[martial evasion fancy unarmed tech]
 foe_fields = %i[exp attack_verb weapon weapon_dmg finisher drops level habitat tags] + attrs + skills
 
 Foe = Struct.new('Foe', *foe_fields, keyword_init: true) do
@@ -232,7 +232,7 @@ Player = Struct.new('Player', *player_fields, keyword_init: true) do
   end
 
   def next_level_exp
-    (level.to_f**1.5).ceil.to_i * 25
+    (level.to_f**1.7).ceil.to_i * 25
   end
 
   def ready_to_level_up?
@@ -421,8 +421,20 @@ class Combat < Scene
           player.inventory.remove(item_id)
         elsif item.tagged?(:grenade)
           dmg_roll = item.effect_dice.roll
-          para "You use the #{item.name} and deal #{dmg_roll.total} damage (#{dmg_roll}) damage"
-          @foe.injure(dmg_roll.total)
+          skill = skills.find { |tag| item.tagged?(tag) }
+          
+          # succeeds unless skill check required
+          success = true
+          if skill
+            success, _ = player.skill_check(recorder, skill)
+          end
+          
+          if success
+            para "You use the #{item.name} and deal #{dmg_roll.total} damage (#{dmg_roll}) damage"
+            @foe.injure(dmg_roll.total)
+          else
+            para "You fumble with the #{item.name} and #{foe.name} avoids the effect."
+          end
           player.inventory.remove(item_id)
         else
           para "You thrust the #{item.name} into the air... and nothing happens."
@@ -922,13 +934,18 @@ class CharacterSheet < Scene
 
     para "Cash: $#{player.cash}"
 
-    %i[martial evasion fancy unarmed].each do |skill|
+    %i[martial evasion fancy unarmed tech].each do |skill|
       if player.trained_in?(skill)
         line "#{skill.to_s.capitalize} skill: #{player[skill]}"
       else
-        defaulted, default_mod = player.default_of(:fancy)
-        current = player[defaulted] + default_mod
-        line "#{skill.to_s.capitalize} skill: untrained (defaulting at #{current})"
+        defaulted, default_mod = player.default_of(skill)
+        if defaulted.nil?
+          current = 10 + default_mod
+          line "#{skill.to_s.capitalize} skill: #{current} (untrained, no default)"
+        else
+          current = player[defaulted] + default_mod
+          line "#{skill.to_s.capitalize} skill: #{current} (untrained, defaulting)"
+        end
       end
     end
     newline
@@ -1006,6 +1023,19 @@ class LevelUp < Scene
       current = player[defaulted] + default_mod
       choice :f, "Train with fancy weapon skill (#{current} -> 7)" do
         player.fancy = 7
+      end
+    end
+
+    if player.trained_in?(:tech)
+      choice :t, "Train technology skill (#{player.tech} -> #{player.tech + 1})" do
+        player.tech += 1
+      end
+    elsif !player.inventory.by_tag(:tech).empty?
+      # TODO: tech doesn't default, really need to factor out skill logic...
+      _, default_mod = player.default_of(:tech)
+      current = 10 + default_mod
+      choice :t, "Train technology skill (#{current} -> 9)" do
+        player.tech = 9
       end
     end
 
@@ -1130,19 +1160,12 @@ class PriceElectronics < Scene
 
     case progress
     when 'empty'
-      para "This building seems somehow lifeless now that it's sole biological occupant has died."
-      if player.inventory.has?(:encyclopedia) && player.inventory.has?(:octocopter)
-        choice :w, "Use the workshop" do
-          para "With no further leads to persue, you reckon you'll have to use the principles found in the encyclopedia you picked up to understand the octocopter drone."
-          pause
-          finish_scene
-        end
-      end
-      choice :l, "Leave" do
-        finish_scene
-      end
-
-      choose!
+      empty_dialogue
+      return
+    when 'friendly'
+      para "You enter the Price Electronics building by the front door, and are greeted by a robot that salutes with a blood-soaked bat as you pass. You glance at the machine and try to remember if the blood is yours..."
+      pause
+      replace_to :craigs_office
       return
     when 'confront'
       confront_dialogue
@@ -1278,7 +1301,7 @@ class PriceElectronics < Scene
     else
       para "The man panics, his hands rapidly working the device, but no other sounds can be heard."
       pause
-      para "You flick stray shreds of metal dust casually from your arm, and walk slowly toward the man for effect."
+      para "You flick stray shreds of metal dust casually from your arm, and walk slowly toward him for effect."
       pause
       dialogue 'Man', "Now now, let's not be too hasty! After all, you're the one who barged into my home, I can't be faulted for defending myself"
       say :t, "Home... so you must be Craig. Let's call a truce then, I only came here to talk." do
@@ -1294,11 +1317,41 @@ class PriceElectronics < Scene
       end
       choose!
     end
+  end
 
-    def make_peace
-      self.progress = 'friendly'
-      replace_to :craigs_office
+  def empty_dialogue
+    para "This enormous building seems somehow lifeless now that it's sole biological occupant has died. There is nothing but silence and dust slowly sifting from the ceiling."
+    if player.inventory.has?(:encyclopedia) && player.inventory.has?(:octocopter)
+      choice :w, "Use the workshop" do
+        para "With no further leads to persue, you reckon you'll have to use the principles found in the encyclopedia you picked up to understand the octocopter drone."
+        pause
+        para "You dig up some equipment from the workshop, and start reading about radios, signal analysis, power..."
+        pause
+        para "Stumbling upon a means of measuring signal strength, you excitedly clear a desk and start taking apart the drone..."
+        pause
+        para "You don't notice hours pass, then an entire night, and are suddenly startled as you awaken sometime during the afternoon. You look around nervously but you are still alone."
+        pause
+        player.inventory.remove(:octocopter)
+        success, _ = player.skill_check(recorder, :tech)
+        if success
+          para "You've done it! A crude but effective measure of distance to whoever or whatever is controlling the octocopters, and others like it."
+          player.inventory.add(:receiver)
+        else
+          para "You look down at what you accomplished overnight: not much, aside from destroying the drone."
+        end
+        pause
+      end
     end
+    choice :l, "Leave" do
+      finish_scene
+    end
+
+    choose!
+  end
+
+  def make_peace
+    self.progress = 'friendly'
+    replace_to :craigs_office
   end
 
   def fight_minion
@@ -1310,10 +1363,88 @@ class PriceElectronics < Scene
 end
 
 class CraigsOffice < Scene
+  state_variable :intro, initial: true
+  state_variable :like, initial: 0
   def enter
-    para "You enter into the office. Blah blah."
-    pause
-    finish_scene
+    para "You stand inside Craig's small office, which consists of boxes rostling for space with a desk underneath a bunk bed, tucked into a room barely large enough to hold both. Boxes stacked neatly along the walls provide only a narrow path to the chair Craig is sitting in."
+    para "He awkwardly shuffles his glance between his work, you and your weapon and gives you a forced smile."
+
+    return intro_dialogue if intro
+
+    if !player.inventory.has?(:receiver)
+      choice :d, "Ask about using one of the octocopter drones to find the operator." do
+        dialogue "Craig", "Only if you tell him the mighty Craig sent you, mwahahaha!"
+        para "After a beat you realize this was a joke and give a polite chuffle in response."
+        if player.inventory.has?(:octocopter)
+          para "You flip open bag while expressing thanks, and pull out an octocopter, dropping it on his desk. Craig winces as the dirty thing lands on a stack of papers, and moves it to an empty surface."
+          pause
+          para "Without delay, he excitedly starts prying, spudging, loosening and unscrewing various parts, mumbling things and laughing to himself about inappropriate use of inverse reactive current and slipshod unilateral phase detractors..."
+          pause
+          para "A few key parts are removed and hooked into a web of leads, probes and clips. Drawers are opened, more implements employed, things are soldered, unsoldered, re-soldered, and you roll your head, stiff from watching so intently."
+          pause
+          para "Finally, you hadn't even realized he finished as he hands you a device."
+          dialogue "Craig", "This will show you the signal strength of the transmitter. The closer you are, the stronger the signal. You can figure it out from there."
+          player.inventory.remove(:octocopter)
+          player.inventory.add(:receiver)
+          para "You nod thanks and drop the device into your bag."
+          pause
+        end
+      end
+    end
+
+    choice :b, "Ask about any other equipment he might be willing to part with" do
+      proceed_to :barter, 'Craig', %i[first_aid snitch frag]
+    end
+
+    choice :l, "Leave." do
+      para "You make some small talk and politely excuse yourself."
+      pause
+      finish_scene
+    end
+
+    choose!
+  end
+
+  def intro_dialogue
+    say "Nice place you have here." do
+      dialogue "Craig", "Thank you. I'm sure yours is just as nice."
+      para "Your mouth is half open as you are about to comment on your present state of homelessness, but think better of it."
+      if like == 0
+        self.like += 1
+      end
+      pause
+    end
+    say "Let's cut to the chase here, I'm told you're the guy if I need to figure out the source of the drones in Assiniboine forest." do
+      para "Craig throws himself forward in the chair and raps his palm across the desk."
+      dialogue "Craig", "That hack! He has no idea what he's doing! Just the other day I found some of his 'work', one of those drones snooping around in here. Fool couldn't tell a multimeter from an oscilloscope! You can't produce magneto reluctance AND capacitive reactance from modial interactions, it's ..."
+      pause
+      para "At this point, your eyes glaze over, and for awhile you simply nod at critical moments, breathing deliberately to try and lower your blood pressure. After a minute, you realize he probably isn't going to stop for awhile."
+      
+      choice "Interrupt" do
+        para "You abruptly speak in the middle of a comment on the relaxive motion of conductors and fluxes."
+        dialogue "You", "Look, are you going to help me or not?"
+        para "Craig pauses, staring at the ceiling, as if he'd just jumped off the train of thought long before reaching the station."
+        pause
+      end
+      choice "Wait for a natural break in his rant before interjecting" do
+        self.like += 3
+        para "You continue to feign interest for what feels like an hour, but is probably only a few more minutes. Finally, Craig reaches for a cup of water and takes a sip."
+        dialogue 'You', "He sure sounds like a second-rate operator."
+        dialogue 'Craig', "Exactly, that's what I was saying!"
+        pause
+      end
+      if player.trained_in?(:tech)
+        say :t, "I've noticed problems with his work as well (tech)" do
+          para 'You both converse for awhile on exactly why the unnamed drone operator in question is a know-nothing tool.'
+          self.like += 5
+        end
+      end
+      choose!
+      para "After a bit more back and forth, like a ship's captain fighting a storm, you take the wheel and steer the conversation slowly toward your needs."
+      pause
+      self.intro = false
+    end
+    choose!
   end
 end
 
