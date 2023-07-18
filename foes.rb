@@ -14,7 +14,7 @@ class Foes
       foe_raw.delete(:id)
 
       # ugh
-      %i[martial evasion hp exp cash].each do |key|
+      %i[martial evasion hp exp cash dr].each do |key|
         foe_raw[key] = foe_raw[key].to_i
       end
       foe_raw[:weapon_dmg] = d(foe_raw[:weapon_dmg])

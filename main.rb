@@ -87,13 +87,19 @@ module Combatant
       return [:evade, evade_roll] if evaded
     end
 
-    dmg_roll = weapon_dmg.roll(modifier)
-    recorder[name, " rolling damage: ", dmg_roll]
+    if other.dr > 0
+      recorder[other.name.capitalize, " applies damage reduction of #{other.dr}"]
+    end
+
+    dmg_roll = weapon_dmg.roll(modifier - other.dr)
+    recorder[name.capitalize, " rolling damage: ", dmg_roll]
+    
     other.injure(dmg_roll.total)
     [:hit, dmg_roll]
   end
 
   def injure(dmg)
+    dmg = 0 if dmg < 0
     self.hp -= dmg
     self.hp = 0 if self.hp.negative?
   end
@@ -117,8 +123,8 @@ Item = Struct.new('Item', :name, :description, :value, :combat, :effect_dice, :t
 end
 
 attrs = %i[name cash hp max_hp]
-skills = %i[martial evasion fancy unarmed tech]
-foe_fields = %i[exp attack_verb weapon weapon_dmg finisher drops level habitat tags] + attrs + skills
+$skills = %i[martial evasion fancy unarmed tech]
+foe_fields = %i[dr exp attack_verb weapon weapon_dmg finisher drops level habitat tags] + attrs + $skills
 
 Foe = Struct.new('Foe', *foe_fields, keyword_init: true) do
   include Combatant
@@ -138,7 +144,7 @@ Foe = Struct.new('Foe', *foe_fields, keyword_init: true) do
   end
 end
 
-player_fields = %i[exp level] + attrs + skills
+player_fields = %i[exp level] + attrs + $skills
 
 class Inventory
   attr_reader :items, :eq_weapon
@@ -247,6 +253,10 @@ Player = Struct.new('Player', *player_fields, keyword_init: true) do
     get_weapon&.effect_dice || d(4)
   end
 
+  def dr
+    0 # TODO: armour
+  end
+
   def get_weapon
     return nil if inventory.eq_weapon.nil?
     Items.by_id(inventory.eq_weapon)
@@ -321,27 +331,11 @@ class Combat < Scene
 
     para 'Your next action?'
     choice 'Attack' do
-      result, roll = player.strike(recorder, foe)
-      case result
-      when :hit
-        line "You attack, dealing #{roll.total} damage!"
-      when :miss
-        line 'You miss!'
-      when :evade
-        line "#{foe_name} evades!"
-      end
+      player_strike(0)
     end
     choice 'Power Attack' do
       player.forfeit_evade!
-      result, roll = player.strike(recorder, foe, modifier: 2)
-      case result
-      when :hit
-        line "You attack, dealing #{roll.total} damage!"
-      when :miss
-        line "You miss!"
-      when :evade
-        line "#{foe_name} evades!"
-      end
+      player_strike(2)
     end
     choice 'Inventory' do
       cancel = rummage_through_inventory
@@ -369,7 +363,11 @@ class Combat < Scene
       result, roll = foe.strike(recorder, player)
       case result
       when :hit
-        line "#{foe_name} #{foe.attack_verb} with its #{foe.weapon}, dealing #{roll.total} damage!"
+        if roll.total.positive?
+          line "#{foe_name} #{foe.attack_verb} with its #{foe.weapon}, dealing #{roll.total} damage!"
+        else
+          line "#{foe_name} #{foe.attack_verb}, but the #{foe.weapon} is shrugged off by your armour!"
+        end
       when :miss
         line "#{foe_name} #{foe.attack_verb}, but misses!"
       when :evade
@@ -381,6 +379,22 @@ class Combat < Scene
         proceed_to :game_over
       end
       pause
+    end
+  end
+
+  def player_strike(mod)
+    result, roll = player.strike(recorder, foe, modifier: mod)
+    case result
+    when :hit
+      if roll.total.positive?
+        line "You attack, dealing #{roll.total} damage!"
+      else
+        line "You hit, but the #{player.weapon} deals no damage!"
+      end
+    when :miss
+      line 'You miss!'
+    when :evade
+      line "#{foe_name} evades!"
     end
   end
 
@@ -421,7 +435,7 @@ class Combat < Scene
           player.inventory.remove(item_id)
         elsif item.tagged?(:grenade)
           dmg_roll = item.effect_dice.roll
-          skill = skills.find { |tag| item.tagged?(tag) }
+          skill = $skills.find { |tag| item.tagged?(tag) }
           
           # succeeds unless skill check required
           success = true
@@ -1279,7 +1293,7 @@ class PriceElectronics < Scene
     if guards > 0
       para "Your eyes sweep the area for threats after dispatching the last killing machine, and you notice a man skulking in the shadows, light gleaming off a device of some kind."
 
-      say :t, "Let's talk this out like adults, there's no need for violence!" do
+      say :t, "Let's talk this out, there's no need for violence!" do
         if pizza || guards < 2
           para "The room is dead silent for a moment, and the man straightens."
           dialogue 'Man', "Very well! I'll hear you out. Let's talk in my office."
@@ -1374,7 +1388,7 @@ class CraigsOffice < Scene
     if !player.inventory.has?(:receiver)
       choice :d, "Ask about using one of the octocopter drones to find the operator." do
         dialogue "Craig", "Only if you tell him the mighty Craig sent you, mwahahaha!"
-        para "After a beat you realize this was a joke and give a polite chuffle in response."
+        para "After a beat you realize this was a joke and give a polite chuff in response."
         if player.inventory.has?(:octocopter)
           para "You flip open bag while expressing thanks, and pull out an octocopter, dropping it on his desk. Craig winces as the dirty thing lands on a stack of papers, and moves it to an empty surface."
           pause
