@@ -1,8 +1,8 @@
 require 'forwardable'
 
 class SceneOwner
-  attr_reader :window, :player, :state
-  attr_writer :player
+  attr_accessor :player
+  attr_reader :window, :state
 
   def initialize(window)
     @scenes = []
@@ -41,12 +41,15 @@ class SceneOwner
   end
 
   def dehydrate
-    { scene_state: @state, player: @player.dehydrate }
+    { scene_state: @state, player: @player.dehydrate, scenes: @scenes.map(&:scene_name) }
   end
 
   def hydrate(hash)
     @state = hash[:scene_state]
     @player = Player.hydrate(hash[:player])
+    # TODO: doesn't handle scene args, but okay for now
+    @scenes = []
+    replace_to(*hash[:scenes].map(&:to_sym))
   end
 end
 
@@ -78,6 +81,10 @@ class Scene
     window.line(line, color: :secondary)
   end
 
+  def scene_name
+    underscore(self.class.name)
+  end
+
   def recorder
     method(:record_roll)
   end
@@ -92,13 +99,22 @@ class Scene
     @did_first_on_enter = true
   end
 
-  def Scene.state_variable(name, initial: nil, shared: false)
+  private
+
+  # shamelessly stolen from active_support
+  def underscore(camel_cased_word)
+    return camel_cased_word unless /[A-Z-]|::/.match?(camel_cased_word)
+    word = camel_cased_word.to_s.gsub("::".freeze, "/".freeze)
+    word.gsub!(/([A-Z\d]+)([A-Z][a-z])/, '\1_\2'.freeze)
+    word.gsub!(/([a-z\d])([A-Z])/, '\1_\2'.freeze)
+    word.tr!("-".freeze, "_".freeze)
+    word.downcase!
+    word
+  end
+
+  def self.state_variable(name, initial: nil, shared: false)
     define_method(name) do
-      state_key = if shared
-        :globals
-      else 
-        self.class.name.to_sym
-      end
+      state_key = if shared then :globals else scene_name.to_sym end
 
       owner.state[state_key] ||= {}
       if owner.state[state_key].key?(name)
@@ -109,12 +125,8 @@ class Scene
     end
 
     define_method("#{name}=") do |new_val|
-      state_key = if shared
-        :globals
-      else 
-        self.class.name.to_sym
-      end
-      
+      state_key = if shared then :globals else scene_name.to_sym end
+
       # don't store initial values
       owner.state[state_key] ||= {}
       if new_val == initial
@@ -123,5 +135,47 @@ class Scene
         owner.state[state_key][name] = new_val
       end
     end
+  end
+end
+
+class Save < Scene
+  def initialize(msg)
+    @msg = msg
+  end
+  def enter
+    # pop save scene itself before dehydrate
+    finish_scene
+
+    para @msg
+    save_file = File.join(__dir__, 'saves', player.name.downcase)
+    File.write(save_file, owner.dehydrate.to_json, mode: 'w')
+    pause
+  end
+end
+
+class Load < Scene
+  def enter
+    saves = Dir[File.join(__dir__, 'saves', '**')]
+    if saves.empty?
+      para 'No saves found!'
+      pause
+      finish_scene
+      return
+    end
+
+    para 'Choose a save:'
+    saves.each_with_index do |save, idx|
+      name = File.basename(save)
+      choice (idx + 1).to_s, name do
+        load(save)
+      end
+    end
+    choose!
+  end
+
+  def load(file)
+    contents = File.read(file)
+    hash = JSON.parse(contents, symbolize_names: true)
+    owner.hydrate(hash)
   end
 end

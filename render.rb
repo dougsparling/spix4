@@ -61,12 +61,12 @@ class PlainWindow < BaseWindow
     puts(text)
   end
 
-  def prompt(label = "")
+  def prompt(_label = '')
     @stdout.print("#{prompt}> ")
     @stdout.flush
     $stdin.gets
   end
-    
+
   def para(text, width: 0, margin: 0)
     line(text)
     newline
@@ -85,11 +85,15 @@ end
 # abstraction over the awfulness that is curses
 class CursesWindow < BaseWindow
   include Curses
+  class << self
+    attr_accessor :curses_init_done
+  end
 
   def initialize
+    super
     # one-time setup needed before buidling curses windows
-    @@curses_init_done ||= false
-    unless @@curses_init_done
+    CursesWindow.curses_init_done ||= false
+    unless CursesWindow.curses_init_done
       init_screen
       start_color
       noecho
@@ -97,7 +101,7 @@ class CursesWindow < BaseWindow
       init_pair(COLOR_BLUE, COLOR_BLUE, COLOR_BLACK)
       init_pair(COLOR_RED, COLOR_RED, COLOR_BLACK)
 
-      @@curses_init_done = true
+      CursesWindow.curses_init_done = true
     end
 
     # centered box in terminal, exposing a smaller subwindow that scenes can draw into
@@ -199,13 +203,11 @@ class CursesWindow < BaseWindow
     end
   end
 
-  def prompt(label = "")
-    @current << label << "> "
+  def prompt(label = '')
+    @current << label << '> '
     str = ''
     echo
-    while str.empty?
-      str = @current.getstr
-    end
+    str = @current.getstr while str.empty?
     noecho
     str
   end

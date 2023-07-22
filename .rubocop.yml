@@ -9,6 +9,9 @@ Lint/MissingSuper:
 Style/OptionalBooleanParameter:
   Enabled: false
 
+Metrics/ClassLength:
+  Max: 999 # ridiculous
+
 # Configuration parameters: AllowedMethods, AllowedPatterns, CountRepeatedAttributes.
 Metrics/AbcSize:
   Max: 999 # lol
