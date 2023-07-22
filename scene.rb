@@ -21,13 +21,9 @@ class SceneOwner
     end
   end
 
-  def proceed_to(next_scene, *args)
-    # e.g. :next_scene -> NextScene class
-    scene_type = Object.const_get(next_scene.to_s.split('_').collect(&:capitalize).join)
-    scene = scene_type.new(*args)
-    # TODO: kinda nasty?
-    scene.owner = self
-    @scenes.push(scene)
+  def transition_to(next_scene)
+    @scenes = []
+    proceed_to next_scene
   end
 
   def replace_to(*next_scenes)
@@ -35,6 +31,15 @@ class SceneOwner
     next_scenes.each do |scene|
       proceed_to scene
     end
+  end
+
+  def proceed_to(next_scene, *args)
+    # e.g. :next_scene -> NextScene class
+    scene_type = Object.const_get(next_scene.to_s.split('_').collect(&:capitalize).join)
+    scene = scene_type.new(*args)
+    # TODO: kinda nasty?
+    scene.owner = self
+    @scenes.push(scene)
   end
 
   def finish_scene
@@ -59,7 +64,7 @@ class Scene
   attr_accessor :owner
 
   def_delegators :window, :choice, :dialogue, :say, :choose!, :line, :para, :newline, :pause, :blank, :prompt
-  def_delegators :owner, :proceed_to, :replace_to, :finish_scene
+  def_delegators :owner, :proceed_to, :replace_to, :transition_to, :finish_scene
 
   def window
     @owner.window

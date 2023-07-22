@@ -258,7 +258,7 @@ class Combat < Scene
       return if cancel
     end
     choice 'Escape' do
-      did_run, = player.contest(recorder, foe, :evasion, modifier: 4)
+      did_run, = player.contest(recorder, foe, :evasion, modifier: 3)
 
       if did_run && !foe.tagged?(:plot)
         line 'You run in panic stricken fear!'
@@ -291,8 +291,15 @@ class Combat < Scene
       end
 
       if player.slain?
+        totem_id, totem, _ = player.inventory.by_tag(:totem).shuffle.first
         para 'The world begins to darken...'
-        proceed_to :game_over
+        if totem
+          para "... and the #{totem.name} leaps from your pack, bursting as it absorbs the blow!"
+          heal_roll = totem.effect_dice.roll
+          player.heal(heal_roll)
+        else
+          proceed_to :game_over
+        end
       end
       pause
     end

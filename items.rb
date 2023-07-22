@@ -14,7 +14,7 @@ class Items
       id = item_raw[:id]
       item_raw.delete(:id)
 
-      # some CSV editors write empty strings in instead of just omitting the value
+      # some CSV editors write empty strings instead of just omitting the value
       item_raw.delete_if { |_, value| value.empty? }
 
       item_raw[:value] = item_raw[:value].to_i

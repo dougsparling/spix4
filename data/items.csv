@@ -15,3 +15,4 @@
 "snitch","snitch","A guided explosive ball that requires no skill to use, but most of the payload has been traded for mechanical wings and a camera.","30","2d3","grenade"
 "mre","rations","A box labeled 'MRE', contains a compact meal that can be wolfed down quickly.","15","2d4","heal"
 "blueprints","spix blueprints","Several large sheets of paper detailing the high level design of the Spix: a humanoid cyborg perhaps a hundred meters tall, outfitted with an arsenal that could challenge an entire army in a straight fight.","0","",""
+"bear_heart","heart of the cocaine bear","Somehow the heart of the cocaine-adled bear still beats.","0","2d8","heal|totem"

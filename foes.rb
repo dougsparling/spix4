@@ -13,7 +13,7 @@ class Foes
       id = foe_raw[:id]
       foe_raw.delete(:id)
 
-      # some CSV editors write empty strings in instead of just omitting the value
+      # some CSV editors write empty strings instead of just omitting the value
       foe_raw.delete_if { |_, value| value.empty? }
 
       # ugh

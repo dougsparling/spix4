@@ -1,42 +1,3 @@
-class Camp < Scene
-  def enter
-    para 'As the daylight wanes, you question the wisdom of making the trek back to town in the dark.'
-    para 'After a quick survey, you find a small concealed clearing and set up camp, listening intently for lurking dangers.'
-    para 'Eventually your guard slips and you are embraced by sleep...'
-    pause
-
-    case rand(40)
-    when 1..20
-      if player.hp > player.max_hp
-        para 'You enter a restless sleep as the effects of the alcohol progress'
-        line 'You awaken with a hangover', color: :secondary
-      else
-        para 'You enjoy a deep and uninterrupted sleep'
-        line 'HP fully recovered!', color: :secondary
-      end
-      player.hp = player.max_hp
-      pause
-      finish_scene
-    when 21..30
-      para 'You awaken to the sound of brush crunching underfoot. You spring from your tent to confront whatever is out there...'
-      pause
-      finish_scene
-      proceed_to :combat, Foes.random_encounter(:camp, level_max: player.level)
-    when 31..38
-      para 'However, distant but unnerving noises interrupt your sleep throughout the night.'
-      recovered = [d('2d4').roll.total, player.max_hp - player.hp].min
-      line "Recovered #{recovered} HP!", color: :secondary
-      player.hp = player.max_hp
-      pause
-      finish_scene
-    else
-      para "In the middle of the night, something rouses you from sleep, although there's no noise or shadows playing across the tent. You decide to investigate, and see the clouds have parted to reveal a full moon."
-      pause
-      finish_scene
-    end
-  end
-end
-
 class Title < Scene
   def enter
     para 'LEGEND OF THE EVIL SPIX IV:', margin: 12
@@ -275,6 +236,7 @@ end
 
 class Dylan < Scene
   state_variable :intro, initial: true
+  state_variable :ready_to_go, initial: false
 
   def enter
     para "You enter Dylan's room, and you see a man sitting behind a desk -- one who clearly doesn't have as much trouble finding a meal as the other wasters around here."
@@ -347,9 +309,72 @@ class Dylan < Scene
         pause
       end
     end
+
     say 'Any words of wisdom?' do
       para 'He raises an eyebrow at you, and looks down, resuming his writing.'
       pause
+    end
+
+    if ready_to_go
+      say :o, "I'm ready for the trip to Ottawa." do
+        dialogue "Dylan", "Great. The wagon's out back, ready to hit the trail to Oregon."
+        dialogue "You", "Oregon?"
+        dialogue "Dylan", "Sorry, Ottawa. Wrong game."
+        para "You only have a beat to ponder what he's talking about before he leads you out into the main room of the tavern. Seems a small crowd has formed."
+        dialogue "Dylan", "My fellow countrymmen! The time has come for us to embark upon --"
+        pause
+        blank
+        para "You tune out yet another one of his self-aggrandizing speeches and look out into the crowd, and they seem to be eating it up."
+        para "Soon he's out among people, saying goodbyes and shaking hands. People only give you an occasional glance or a polite nod. You'd think people would be more appreciative of your efforts."
+        para "After doing a few rounds, both through the crowd and at the bar, Dylan is back beside you and notices your expression."
+        pause
+        dialogue "Dylan", "I know what you're thinking. But the truth is folks here don't have much hope, 'specially for so-called heroes. And now, in their eyes, because of you their leader is leaving. Probably never to return. So don't hold it against them."
+        para "He claps your shoulder and leads you out the back door. You ponder the fates of the simple folk in the bar, then turn and leave."
+        transition_to :caravan
+      end
+    elsif player.inventory.has?(:blueprints)
+      say "I've got the blueprints from Hammond's lab." do
+        para "He drops his pen and abruptly stands up."
+        dialogue "Dylan", "You do? Let's see them."
+        para "You pull out the blueprints and unroll them on his desk. He leans in for a better look."
+        pause
+        dialogue "Dylan", "Hmm. Just as I thought, completely impervious to a conventional attack. Ah, but look here, there's a thermal exhaust port that runs straight to the reactor core!"
+        para "He grins and looks up at you expectantly. When you fail to respond, his grin disappears."
+        dialogue "Dylan", "Oh come on, that was perfect. Ugh, okay, let's see what else we can find..."
+        pause
+        para "He continues to comb over the blueprints, and after a few minutes begins to tap a spot on the page absentmindedly."
+        dialogue "Dylan", "I wonder -- seems as through the interior of it is lined with access corridors. Just big enough for maintenance crews to crawl through. Somebody inside them could also deal some real damage. But either way, have to get in somewhere."
+        para "He traces his finger through the blueprints with one hand, and the other tugs at what little hairs remains on his head."
+        pause
+        dialogue "Dylan", "There is a hatch near the base of its 'spine', but it's just as armoured as the rest of it. There must have been some kind of key to open it. Hmm, maybe there's a note about it, oh!"
+        para "Suddenly his eyes light up and he starts flipping back through pages."
+        dialogue "Dylan", "There's a part number! And see here, there's a vendor listed. Oh. Oh no."
+        pause
+        dialogue "You", "What?"
+        dialogue "Dylan", "The vendor was a small outfit in Ottawa."
+        dialogue "You", "So?"
+        dialogue "Dylan", "Didn't you get an education out there? Ottawa was the capital. First, it's easily more than two thousand kilometers from here. Second, it was captured by the American military when the fighting started."
+        para "He pauses for a moment while you wish he'd hurry up with all this."
+        pause
+        dialogue "Dylan", "It became their forward base during the invasion. They never pulled out."
+        dialogue "You", "So that means--"
+        dialogue "Dylan", "That means they're still there, #{player.name}! The goddamn military is still there."
+        pause
+        dialogue "You", "I see, so it's months of walking that ends with either my death or a slim chance of finding what I'm looking for."
+        dialogue "Dylan", "Pretty much."
+        dialogue "You", "And even if I succeed, the hard part hasn't even started yet."
+        dialogue "Dylan", "Ah, yup."
+        para "He forces a laugh and struggles to hold together a smile."
+        pause
+        dialogue "You", "Guess I'll be hitting the road then."
+        para "He grits his teeth and rolls his head, settling his gaze at the ceiling."
+        dialogue "Dylan", "Ah dammit. This is too important to leave to one person. Give me some time to round up anybody willing to help, and we'll form a caravan. We can cover food, transport, navigation. You can handle security, and of course I'll manage the whole thing."
+        dialogue "You", "That's unexpectedly generous."
+        dialogue "Dylan", "Well, we're just lifting you up to the jaws of the beast, you'll still have to take the leap yourself."
+        dialogue "Dylan", "Anyway, go wrap up any loose ends in town and meet me here when you're done."
+        finish_scene
+        self.ready_to_go = true
+      end
     end
 
     choice 'Leave' do
@@ -633,6 +658,45 @@ class AssiniboineForest < Scene
   end
 end
 
+class Camp < Scene
+  def enter
+    para 'As the daylight wanes, you question the wisdom of making the trek back to town in the dark.'
+    para 'After a quick survey, you find a small concealed clearing and set up camp, listening intently for lurking dangers.'
+    para 'Eventually your guard slips and you are embraced by sleep...'
+    pause
+
+    case rand(40)
+    when 1..20
+      if player.hp > player.max_hp
+        para 'You enter a restless sleep as the effects of the alcohol progress'
+        line 'You awaken with a hangover', color: :secondary
+      else
+        para 'You enjoy a deep and uninterrupted sleep'
+        line 'HP fully recovered!', color: :secondary
+      end
+      player.hp = player.max_hp
+      pause
+      finish_scene
+    when 21..30
+      para 'You awaken to the sound of brush crunching underfoot. You spring from your tent to confront whatever is out there...'
+      pause
+      finish_scene
+      proceed_to :combat, Foes.random_encounter(:camp, level_max: player.level)
+    when 31..38
+      para 'However, distant but unnerving noises interrupt your sleep throughout the night.'
+      recovered = [d('2d4').roll.total, player.max_hp - player.hp].min
+      line "Recovered #{recovered} HP!", color: :secondary
+      player.hp = player.max_hp
+      pause
+      finish_scene
+    else
+      para "In the middle of the night, something rouses you from sleep, although there's no noise or shadows playing across the tent. You decide to investigate, and see the clouds have parted to reveal a full moon."
+      pause
+      finish_scene
+    end
+  end
+end
+
 class HammondApproach < Scene
   state_variable :hammond, shared: true
 
@@ -680,7 +744,7 @@ class HammondLab < Scene
 
   def enter
     first_enter do
-      para "You open the hatch, and pull a flashlight from your pack. Flicking it on and holding it in your teeth, you illuminate and begin to descend a long shaft."
+      para "You open the hatch, and pull a flashlight from your pack. Flicking it on and holding it in your teeth, you illuminate a long shaft and begin to descend."
       pause
       para "At the bottom of the shaft, you find what seems to be some kind of survivalist bomb shelter."
       pause
@@ -955,9 +1019,9 @@ class PriceElectronics < Scene
       pause
       para 'You flick stray shreds of metal dust casually from your arm, and walk slowly toward him for effect.'
       pause
-      dialogue 'Man', "Now now, let's not be too hasty! After all, you're the one who barged into my home, I can't be faulted for defending myself"
+      dialogue 'Man', "Now now, let's not be too hasty! After all, you're the one who barged into my home, I can't be faulted for defending myself."
       say :t, "Home... so you must be Craig. Let's call a truce then, I only came here to talk." do
-        dialogue 'Craig', "Yes, that's me. I have many questions for you as well, let's talk more in my office."
+        dialogue 'Craig', "Yes, that's me. If you're willing to talk, let's go into my office."
         pause
         make_peace
       end
@@ -1093,6 +1157,74 @@ class CraigsOffice < Scene
       para "After a bit more back and forth, like a ship's captain fighting a storm, you take the wheel and steer the conversation slowly toward your needs."
       pause
       self.intro = false
+    end
+    choose!
+  end
+end
+
+class Caravan < Scene
+  state_variable :kms, initial: 0
+  state_variable :food, initial: 28
+  state_variable :crew, initial: 4
+
+  def enter
+    para "You walk alongside a small caravan, bound for Ottawa."
+    line "Distance covered: #{kms} / 2068 km"
+    line "Food remaining: #{food} days"
+    para "Crew: #{crew} people"
+
+    choice :p, 'Press onward' do
+      blank
+      para "Dylan agrees, and gives the order to press on. You venture ahead to deal with any threats, and the wagon picks up behind you."
+      pause
+      proceed_to :combat, Foes.random_encounter(:ottawa_road, level_max: player.level)
+      self.kms += d("4d10").roll.total + Dice.new(6, times: crew).roll.total
+    end
+    choice :t, 'Stop and scavage for supplies' do
+      para "You spot a promising area to scavage, and signal the caravan to hold while you run over to investigate --"
+      pause
+      case rand(40)
+      when 0..5
+        para "Closing in on what looks like a supply cache, you realize too late that it's a trap!"
+        pause
+        proceed_to :combat, Foes.random_encounter(:ottawa_road, level_max: player.level)
+      else
+        # TODO
+      end
+    end
+    choice :c, "Pull off and make camp for the evening" do
+
+    end
+    choice :d, "Have a chat with Dylan" do
+      para "You walk alongside the wagon, where Dylan is perched up on the buckboard. He acknowledges you with a nod."
+      choice "Discuss the progress of the caravan" do
+        if player.ready_to_level_up?
+          para 'You discuss the challenges encountered and what lies ahead.'
+          dialogue 'Dylan', "We've come far, but there is still much you don't know about these roads. I'd be happy to share."
+          choice :l, 'Level up!' do
+            proceed_to :level_up
+          end
+          choice :n, 'Nevermind' do
+            # do nothing
+          end
+        else
+          para "After a brief update, it becomes apparent there isn't much to discuss."
+          pause
+        end
+      end
+      choice :l, "Make small talk and excuse yourself." do
+        para "You wander idly through a few different topics, and eventually resume your duty watching the caravan."
+        pause
+      end
+      choose!
+    end
+    line ""
+    choice :s, 'Hop onto the back of the wagon and rest (save)' do
+      proceed_to :save, 'You allow yourself a few hours of shuteye while the wagon bobs along.'
+    end
+    newline
+    choice :m, 'View character sheet' do
+      proceed_to :character_sheet
     end
     choose!
   end
