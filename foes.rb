@@ -13,6 +13,9 @@ class Foes
       id = foe_raw[:id]
       foe_raw.delete(:id)
 
+      # some CSV editors write empty strings in instead of just omitting the value
+      foe_raw.delete_if { |_, value| value.empty? }
+
       # ugh
       %i[martial evasion hp exp cash dr].each do |key|
         foe_raw[key] = foe_raw[key].to_i

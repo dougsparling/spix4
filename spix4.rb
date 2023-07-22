@@ -595,6 +595,9 @@ class Blacksmith < Scene
 end
 
 class AssiniboineForest < Scene
+  # hidden -> found -> alive | dead
+  state_variable :hammond, shared: true, initial: 'hidden'
+
   def enter
     first_enter do
       para 'You walk into the forest, and the trees dampen the sunlight and noise.'
@@ -606,7 +609,16 @@ class AssiniboineForest < Scene
     choice :e, 'Explore' do
       proceed_to :combat, Foes.random_encounter(:forest, level_max: player.level)
     end
-    if player.inventory.has?(:scouts_note)
+
+    if hammond != 'hidden'
+      choice :i, "Head directly to the concealed hatch" do
+        proceed_to :hammond_lab
+      end
+    elsif player.inventory.has?(:receiver)
+      choice :i, "Use the receiver to hone in on the source of the drone signals" do
+        proceed_to :hammond_approach
+      end
+    elsif player.inventory.has?(:scouts_note)
       choice :i, "Investigate the perimeter described in the scout's note" do
         proceed_to :combat, Foes.random_encounter(:hammond_perimeter, level_max: player.level + 1)
       end
@@ -620,6 +632,167 @@ class AssiniboineForest < Scene
     choose!
   end
 end
+
+class HammondApproach < Scene
+  state_variable :hammond, shared: true
+
+  def initialize
+    @signal_strength = rand(10)+1
+  end
+
+  def enter
+    first_enter do
+      para "Pulling out the receiver, you check the batteries and click it on. The arm of a tiny meter wavers as you sweep the device through the air. You will have to walk in order to know if the signal is getting weaker or stronger."
+    end
+
+    para "Signal strength: #{@signal_strength}%"
+
+    choice :w, "Walk toward likely sources of signal" do
+      adj = rand(40) - 8
+      @signal_strength = (@signal_strength + adj).clamp(0, 100)
+
+      proceed_to :combat, Foes.random_encounter(:hammond_perimeter, level_max: player.level + 2)
+    end
+    if @signal_strength >= 100
+      choice :s, "Search this area" do
+        self.hammond = 'found'
+        para "With the arm of the meter buried, you must be at the source of the signal. You search, and quickly spot a wire leading up a tree, hooked to an antenna. Following the wire down, you brush leaves aside and discover a concealed hatch!"
+        
+        choice :e, "Open and enter the hatch" do
+          replace_to :hammond_lab
+        end
+        choice :m, "Mark the area on your map and leave" do
+          finish_scene
+        end
+        choose!
+      end
+    end
+    choice :l, "Abandon progress and leave this area of the forest" do
+      finish_scene
+    end
+    choose!
+  end
+end
+
+class HammondLab < Scene
+  state_variable :hammond, shared: true
+  state_variable :sacked, initial: false
+
+  def enter
+    first_enter do
+      para "You open the hatch, and pull a flashlight from your pack. Flicking it on and holding it in your teeth, you illuminate and begin to descend a long shaft."
+      pause
+      para "At the bottom of the shaft, you find what seems to be some kind of survivalist bomb shelter."
+      pause
+    end
+
+    para "Crates of valuable equipment lie in various states of pillage, and discarded bottles and empty boxes of food litter the floor."
+
+    if hammond == 'dead'
+      para "The body of a man lies on the floor."
+    else
+      para "You are overwhelmed by the smell of a blob of a man lying in an office chair, wearing a headset of some kind. His hands are wrapped around a pair of tiny devices, which he waves seemingly at random through the air."
+    end
+
+    if hammond == 'found'
+      para "He is so totally engrossed in whatever he's doing that you are able to approach undetected."
+
+      choice :k, "Attack the man while he is vulnerable" do
+        self.hammond = 'dead'
+        proceed_to :combat, :hammond
+      end
+
+      choice :s, "Get the man's attention" do
+        self.hammond = 'alive'
+        hammond_intro_dialogue
+      end
+    end
+
+    if hammond == 'alive'
+      dialogue "Hammond", "Feel free to let yourself out."
+
+      choice :a, "Attack him" do
+        self.hammond = 'dead'
+        proceed_to :combat, :hammond
+      end
+    end
+
+    unless sacked
+      choice :r, "Ransack the place" do
+        self.sacked = true
+        para "Looking for notes that may be of use to Dylan, you roll up several large sheets of blue paper, which you are assume are blueprints. Because, you know, they're blue."
+        player.inventory.add(:blueprints)
+        para "You also grab as many unopened boxes of food as will fit in your pack."
+        player.inventory.add(:mre, 5)
+        pause
+      end
+    end
+
+    choice :l, "Ascend the ladder" do
+      para "You climb back up the ladder"
+      pause
+      finish_scene
+    end
+
+    choose!
+  end
+
+  def hammond_intro_dialogue
+    para "You brace yourself for a reaction, and kick the arm of his chair. He jerks backward so hard he is almost dumped onto the ground. He fumbles the headset off and lets out a nasal whine."
+    dialogue "Hammond", "Wahh, you're the goon that keeps killing all my guards and smashing all my expensive toys!"
+    dialogue "You", "And you must be Hammond."
+    dialogue "Hammond", "Yes, in the flesh."
+    
+    done = false
+    until done
+      say :w, "What exactly are you doing here?" do
+        dialogue "Hammond", "Humph, I wouldn't expect a goon like you to understand. Let's just say I'm working to ensure the survival of my little gang here."
+        pause
+      end
+      say :g, "Who are all those violent thugs outside? You their boss?" do
+        dialogue "Hammond", "That's right. I give them food and equipment, and they run... errands for me."
+        pause
+      end
+      say :d, "Dylan says you were involved in the early work on the Spix." do
+        dialogue "Hammond", "Ah ha ha, the old fool still curses my name over that, eh? I won't deny it, I had a hand in the end of the world. Most would have shirked away from such a task, oh morals this, or impossible that. But not us!"
+        
+        say :u, "Us?" do
+          dialogue "Hammond", "Of course there were others! We're out of touch these days, forgot to top up my cell plan before armageddon."
+          pause
+        end
+
+        say :w, "Well, congratulations on your success. Now I'm going to stop it." do
+          dialogue "Hammond", "Ha, are you now? Ah, now I see, this has nothing to do with me or revenge, or else we wouldn't be having this conversation. You're looking for scraps or clues that might reveal an exploitable weakness."
+          para "Hammond chuckles, tenting his fingers into the semblance of a pack of sausages."
+          pause
+          dialogue "Hammond", "Well, I think you'll find it quite indestructable and your task quite hopeless. But don't let me stop you if you want to commit suicide, easier than having my folks mop you up."
+
+          if sacked
+            para "His eyes wander to a box in the corner of the room."
+            dialogue "Hammond", "Seems you've already helped yourself to whatever you've wanted. What are you talking to me for?"
+          else
+            self.sacked = true
+            player.inventory.add(:blueprints)
+            pause
+            para "You follow his pointing finger to a large box, and rummage through it, pulling out some blue sheets of paper."
+            pause
+            dialogue "Hammond", "Now if you'll excuse me, you're hardly the only threat to be concerned with out here."
+          end
+          
+          done = true
+
+          para "He places the headset back over his eyes and resumes whatever he was doing earlier."
+          pause
+        end
+
+        choose!
+      end
+
+      choose!
+    end
+  end
+end
+
 
 class PriceElectronics < Scene
   # hidden -> hostile -> confront -> friendly -> dead?

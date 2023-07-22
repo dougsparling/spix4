@@ -1,4 +1,5 @@
 require 'forwardable'
+require 'json'
 
 class SceneOwner
   attr_accessor :player

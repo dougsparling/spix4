@@ -1,5 +1,4 @@
 require 'debug'
-require 'json'
 
 require './scene'
 require './render'
@@ -10,16 +9,14 @@ require './combat'
 
 require './spix4'
 
-
-
 # detect irb/require and don't jump into game
 return unless $PROGRAM_NAME == __FILE__
 
-window = if ENV['window']&.downcase == 'plain'
-           PlainWindow.new
-         else
-           CursesWindow.new
-         end
+if ENV['window']&.downcase == 'plain'
+  window = PlainWindow.new
+else
+  window = CursesWindow.new
+end
 
 # boolean:true int:42 string:whatever => [true, 42, "whatever"]
 scene_params = *(ARGV[1..] || []).map do |param|

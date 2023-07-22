@@ -14,6 +14,9 @@ class Items
       id = item_raw[:id]
       item_raw.delete(:id)
 
+      # some CSV editors write empty strings in instead of just omitting the value
+      item_raw.delete_if { |_, value| value.empty? }
+
       item_raw[:value] = item_raw[:value].to_i
       item_raw[:effect_dice] = d(item_raw[:effect_dice]) if item_raw[:effect_dice]
       item_raw[:combat] = item_raw[:combat] == 'true'
