@@ -1177,46 +1177,20 @@ class Caravan < Scene
       blank
       para "Dylan agrees, and gives the order to press on. You venture ahead to deal with any threats, and the wagon picks up behind you."
       pause
-      proceed_to :combat, Foes.random_encounter(:ottawa_road, level_max: player.level)
+      proceed_to :combat, Foes.random_encounter(:ottawa_road, level_min: player.level - 5, level_max: player.level)
       self.kms += d("4d10").roll.total + Dice.new(6, times: crew).roll.total
     end
-    choice :t, 'Stop and scavage for supplies' do
-      para "You spot a promising area to scavage, and signal the caravan to hold while you run over to investigate --"
-      pause
-      case rand(40)
-      when 0..5
-        para "Closing in on what looks like a supply cache, you realize too late that it's a trap!"
-        pause
-        proceed_to :combat, Foes.random_encounter(:ottawa_road, level_max: player.level)
-      else
-        # TODO
-      end
-    end
-    choice :c, "Pull off and make camp for the evening" do
 
+    choice :t, 'Stop and scavage for supplies' do
+      stop_and_scavage
     end
+
+    choice :c, "Pull off and make camp for the evening" do
+      camp
+    end
+
     choice :d, "Have a chat with Dylan" do
-      para "You walk alongside the wagon, where Dylan is perched up on the buckboard. He acknowledges you with a nod."
-      choice "Discuss the progress of the caravan" do
-        if player.ready_to_level_up?
-          para 'You discuss the challenges encountered and what lies ahead.'
-          dialogue 'Dylan', "We've come far, but there is still much you don't know about these roads. I'd be happy to share."
-          choice :l, 'Level up!' do
-            proceed_to :level_up
-          end
-          choice :n, 'Nevermind' do
-            # do nothing
-          end
-        else
-          para "After a brief update, it becomes apparent there isn't much to discuss."
-          pause
-        end
-      end
-      choice :l, "Make small talk and excuse yourself." do
-        para "You wander idly through a few different topics, and eventually resume your duty watching the caravan."
-        pause
-      end
-      choose!
+      chat_dylan
     end
     line ""
     choice :s, 'Hop onto the back of the wagon and rest (save)' do
@@ -1225,6 +1199,91 @@ class Caravan < Scene
     newline
     choice :m, 'View character sheet' do
       proceed_to :character_sheet
+    end
+    choose!
+  end
+
+  def stop_and_scavage
+    para "You spot a promising area to scavage, and signal the caravan to hold while you run over to investigate."
+    pause
+    case rand(8)
+    when 0
+      para "Closing in on what looks like a supply cache, you realize too late that it's a trap!"
+      pause
+      proceed_to :combat, Foes.random_encounter(:ottawa_road, level_max: player.level + 2)
+    when 1
+      para "You enter an abandoned roadside station, and discover it hasn't been completely picked over yet."
+      para "You find: "
+      
+      something = false
+      if rand(5) == 0
+        line "Enough food to feed the crew for a day."
+        self.food += 1
+        something = true
+      end
+
+      if rand(10) == 0
+        line "A first aid kit."
+        player.inventory.add(:first_aid)
+        something = true
+      end
+
+      if rand(20) == 0
+        line "A frag grenade."
+        player.inventory.add(:frag)
+        something = true
+      end
+
+      if rand(50) == 0
+        line "A cache containing a well-maintained rifle and several clean boxes of ammo."
+        player.inventory.add(:rifle)
+        something = true
+      end
+
+      unless something
+        line "A few dollars."
+        player.cash += 2
+      end
+      pause
+    when 2..3
+      para "You cautiously approach a shanty town, and its inhabitants seem eager to trade."
+      pause
+      proceed_to :barter, 'Trader', %i[knife full_syringe road_chow first_aid shovel].sample(3)
+    end
+  end
+
+  def camp
+    para "You see an area of natural concealment off the road, and signal the caravan to pull over. Dylan and the others jump down and begin pulling supplies from the wagon."
+    para "After a quick meal, you help clean up and turn in for the night."
+    para "That night --"
+    pause
+    # TODO
+    para "-- nothing else of consequence happens. HP recovered!"
+    player.hp = player.max_hp
+    self.food -= 1
+    pause
+  end
+
+  def chat_dylan
+    para "You walk alongside the wagon, where Dylan is perched up on the seat. He acknowledges you with a nod."
+    choice "Discuss the progress of the caravan" do
+      if player.ready_to_level_up?
+        para 'You discuss the challenges encountered and what lies ahead.'
+        dialogue 'Dylan', "We've come far, but there is still much you don't know about these roads. I'd be happy to share."
+        choice :l, 'Level up!' do
+          proceed_to :level_up
+        end
+        choice :n, 'Nevermind' do
+          # do nothing
+        end
+      else
+        para "After a brief update, it becomes apparent there isn't much to discuss."
+        pause
+      end
+    end
+    choice :l, "Make small talk and excuse yourself." do
+      para "You wander idly through a few different topics, and eventually resume your duty watching the caravan."
+      pause
     end
     choose!
   end

@@ -1,4 +1,0 @@
-* add a key-value store to scenes that gets saved along with the game, for persistent effects!
-* where to put global state? do we even need it?
-* maybe add arbitrary tags to player as well
-* 

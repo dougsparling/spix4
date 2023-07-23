@@ -273,7 +273,7 @@ class Combat < Scene
     choose!
 
     if foe.slain?
-      conclude_combat
+      victory
       finish_scene
     else
       result, roll = foe.strike(recorder, player)
@@ -321,7 +321,7 @@ class Combat < Scene
     end
   end
 
-  def conclude_combat
+  def victory
     newline
     para foe.finisher
     pause
