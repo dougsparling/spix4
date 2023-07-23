@@ -291,7 +291,7 @@ class Combat < Scene
       end
 
       if player.slain?
-        totem_id, totem, _ = player.inventory.by_tag(:totem).shuffle.first
+        totem_id, totem, = player.inventory.by_tag(:totem).sample
         para 'The world begins to darken...'
         if totem
           para "... and the #{totem.name} leaps from your pack, bursting as it absorbs the blow!"

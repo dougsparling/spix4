@@ -110,17 +110,18 @@ class Scene
   # shamelessly stolen from active_support
   def underscore(camel_cased_word)
     return camel_cased_word unless /[A-Z-]|::/.match?(camel_cased_word)
-    word = camel_cased_word.to_s.gsub("::".freeze, "/".freeze)
+
+    word = camel_cased_word.to_s.gsub('::'.freeze, '/'.freeze)
     word.gsub!(/([A-Z\d]+)([A-Z][a-z])/, '\1_\2'.freeze)
     word.gsub!(/([a-z\d])([A-Z])/, '\1_\2'.freeze)
-    word.tr!("-".freeze, "_".freeze)
+    word.tr!('-'.freeze, '_'.freeze)
     word.downcase!
     word
   end
 
   def self.state_variable(name, initial: nil, shared: false)
     define_method(name) do
-      state_key = if shared then :globals else scene_name.to_sym end
+      state_key = shared ? :globals : scene_name.to_sym
 
       owner.state[state_key] ||= {}
       if owner.state[state_key].key?(name)
@@ -131,7 +132,7 @@ class Scene
     end
 
     define_method("#{name}=") do |new_val|
-      state_key = if shared then :globals else scene_name.to_sym end
+      state_key = shared ? :globals : scene_name.to_sym
 
       # don't store initial values
       owner.state[state_key] ||= {}
@@ -148,6 +149,7 @@ class Save < Scene
   def initialize(msg)
     @msg = msg
   end
+
   def enter
     # pop save scene itself before dehydrate
     finish_scene

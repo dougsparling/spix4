@@ -317,61 +317,61 @@ class Dylan < Scene
 
     if ready_to_go
       say :o, "I'm ready for the trip to Ottawa." do
-        dialogue "Dylan", "Great. The wagon's out back, ready to hit the trail to Oregon."
-        dialogue "You", "Oregon?"
-        dialogue "Dylan", "Sorry, Ottawa. Wrong game."
+        dialogue 'Dylan', "Great. The wagon's out back, ready to hit the trail to Oregon."
+        dialogue 'You', 'Oregon?'
+        dialogue 'Dylan', 'Sorry, Ottawa. Wrong game.'
         para "You only have a beat to ponder what he's talking about before he leads you out into the main room of the tavern. Seems a small crowd has formed."
-        dialogue "Dylan", "My fellow countrymmen! The time has come for us to embark upon --"
+        dialogue 'Dylan', 'My fellow countrymmen! The time has come for us to embark upon --'
         pause
         blank
-        para "You tune out yet another one of his self-aggrandizing speeches and look out into the crowd, and they seem to be eating it up."
+        para 'You tune out yet another one of his self-aggrandizing speeches and look out into the crowd, and they seem to be eating it up.'
         para "Soon he's out among people, saying goodbyes and shaking hands. People only give you an occasional glance or a polite nod. You'd think people would be more appreciative of your efforts."
-        para "After doing a few rounds, both through the crowd and at the bar, Dylan is back beside you and notices your expression."
+        para 'After doing a few rounds, both through the crowd and at the bar, Dylan is back beside you and notices your expression.'
         pause
-        dialogue "Dylan", "I know what you're thinking. But the truth is folks here don't have much hope, 'specially for so-called heroes. And now, in their eyes, because of you their leader is leaving. Probably never to return. So don't hold it against them."
-        para "He claps your shoulder and leads you out the back door. You ponder the fates of the simple folk in the bar, then turn and leave."
+        dialogue 'Dylan', "I know what you're thinking. But the truth is folks here don't have much hope, 'specially for so-called heroes. And now, in their eyes, because of you their leader is leaving. Probably never to return. So don't hold it against them."
+        para 'He claps your shoulder and leads you out the back door. You ponder the fates of the simple folk in the bar, then turn and leave.'
         transition_to :caravan
       end
     elsif player.inventory.has?(:blueprints)
       say "I've got the blueprints from Hammond's lab." do
-        para "He drops his pen and abruptly stands up."
-        dialogue "Dylan", "You do? Let's see them."
-        para "You pull out the blueprints and unroll them on his desk. He leans in for a better look."
+        para 'He drops his pen and abruptly stands up.'
+        dialogue 'Dylan', "You do? Let's see them."
+        para 'You pull out the blueprints and unroll them on his desk. He leans in for a better look.'
         pause
-        dialogue "Dylan", "Hmm. Just as I thought, completely impervious to a conventional attack. Ah, but look here, there's a thermal exhaust port that runs straight to the reactor core!"
-        para "He grins and looks up at you expectantly. When you fail to respond, his grin disappears."
-        dialogue "Dylan", "Oh come on, that was perfect. Ugh, okay, let's see what else we can find..."
+        dialogue 'Dylan', "Hmm. Just as I thought, completely impervious to a conventional attack. Ah, but look here, there's a thermal exhaust port that runs straight to the reactor core!"
+        para 'He grins and looks up at you expectantly. When you fail to respond, his grin disappears.'
+        dialogue 'Dylan', "Oh come on, that was perfect. Ugh, okay, let's see what else we can find..."
         pause
-        para "He continues to comb over the blueprints, and after a few minutes begins to tap a spot on the page absentmindedly."
-        dialogue "Dylan", "I wonder -- seems as through the interior of it is lined with access corridors. Just big enough for maintenance crews to crawl through. Somebody inside them could also deal some real damage. But either way, have to get in somewhere."
-        para "He traces his finger through the blueprints with one hand, and the other tugs at what little hairs remains on his head."
+        para 'He continues to comb over the blueprints, and after a few minutes begins to tap a spot on the page absentmindedly.'
+        dialogue 'Dylan', 'I wonder -- seems as through the interior of it is lined with access corridors. Just big enough for maintenance crews to crawl through. Somebody inside them could also deal some real damage. But either way, have to get in somewhere.'
+        para 'He traces his finger through the blueprints with one hand, and the other tugs at what little hairs remains on his head.'
         pause
-        dialogue "Dylan", "There is a hatch near the base of its 'spine', but it's just as armoured as the rest of it. There must have been some kind of key to open it. Hmm, maybe there's a note about it, oh!"
-        para "Suddenly his eyes light up and he starts flipping back through pages."
-        dialogue "Dylan", "There's a part number! And see here, there's a vendor listed. Oh. Oh no."
+        dialogue 'Dylan', "There is a hatch near the base of its 'spine', but it's just as armoured as the rest of it. There must have been some kind of key to open it. Hmm, maybe there's a note about it, oh!"
+        para 'Suddenly his eyes light up and he starts flipping back through pages.'
+        dialogue 'Dylan', "There's a part number! And see here, there's a vendor listed. Oh. Oh no."
         pause
-        dialogue "You", "What?"
-        dialogue "Dylan", "The vendor was a small outfit in Ottawa."
-        dialogue "You", "So?"
-        dialogue "Dylan", "Didn't you get an education out there? Ottawa was the capital. First, it's easily more than two thousand kilometers from here. Second, it was captured by the American military when the fighting started."
+        dialogue 'You', 'What?'
+        dialogue 'Dylan', 'The vendor was a small outfit in Ottawa.'
+        dialogue 'You', 'So?'
+        dialogue 'Dylan', "Didn't you get an education out there? Ottawa was the capital. First, it's easily more than two thousand kilometers from here. Second, it was captured by the American military when the fighting started."
         para "He pauses for a moment while you wish he'd hurry up with all this."
         pause
-        dialogue "Dylan", "It became their forward base during the invasion. They never pulled out."
-        dialogue "You", "So that means--"
-        dialogue "Dylan", "That means they're still there, #{player.name}! The goddamn military is still there."
+        dialogue 'Dylan', 'It became their forward base during the invasion. They never pulled out.'
+        dialogue 'You', 'So that means--'
+        dialogue 'Dylan', "That means they're still there, #{player.name}! The goddamn military is still there."
         pause
-        dialogue "You", "I see, so it's months of walking that ends with either my death or a slim chance of finding what I'm looking for."
-        dialogue "Dylan", "Pretty much."
-        dialogue "You", "And even if I succeed, the hard part hasn't even started yet."
-        dialogue "Dylan", "Ah, yup."
-        para "He forces a laugh and struggles to hold together a smile."
+        dialogue 'You', "I see, so it's months of walking that ends with either my death or a slim chance of finding what I'm looking for."
+        dialogue 'Dylan', 'Pretty much.'
+        dialogue 'You', "And even if I succeed, the hard part hasn't even started yet."
+        dialogue 'Dylan', 'Ah, yup.'
+        para 'He forces a laugh and struggles to hold together a smile.'
         pause
-        dialogue "You", "Guess I'll be hitting the road then."
-        para "He grits his teeth and rolls his head, settling his gaze at the ceiling."
-        dialogue "Dylan", "Ah dammit. This is too important to leave to one person. Give me some time to round up anybody willing to help, and we'll form a caravan. We can cover food, transport, navigation. You can handle security, and of course I'll manage the whole thing."
-        dialogue "You", "That's unexpectedly generous."
-        dialogue "Dylan", "Well, we're just lifting you up to the jaws of the beast, you'll still have to take the leap yourself."
-        dialogue "Dylan", "Anyway, go wrap up any loose ends in town and meet me here when you're done."
+        dialogue 'You', "Guess I'll be hitting the road then."
+        para 'He grits his teeth and rolls his head, settling his gaze at the ceiling.'
+        dialogue 'Dylan', "Ah dammit. This is too important to leave to one person. Give me some time to round up anybody willing to help, and we'll form a caravan. We can cover food, transport, navigation. You can handle security, and of course I'll manage the whole thing."
+        dialogue 'You', "That's unexpectedly generous."
+        dialogue 'Dylan', "Well, we're just lifting you up to the jaws of the beast, you'll still have to take the leap yourself."
+        dialogue 'Dylan', "Anyway, go wrap up any loose ends in town and meet me here when you're done."
         finish_scene
         self.ready_to_go = true
       end
@@ -636,11 +636,11 @@ class AssiniboineForest < Scene
     end
 
     if hammond != 'hidden'
-      choice :i, "Head directly to the concealed hatch" do
+      choice :i, 'Head directly to the concealed hatch' do
         proceed_to :hammond_lab
       end
     elsif player.inventory.has?(:receiver)
-      choice :i, "Use the receiver to hone in on the source of the drone signals" do
+      choice :i, 'Use the receiver to hone in on the source of the drone signals' do
         proceed_to :hammond_approach
       end
     elsif player.inventory.has?(:scouts_note)
@@ -701,37 +701,37 @@ class HammondApproach < Scene
   state_variable :hammond, shared: true
 
   def initialize
-    @signal_strength = rand(10)+1
+    @signal_strength = rand(1..10)
   end
 
   def enter
     first_enter do
-      para "Pulling out the receiver, you check the batteries and click it on. The arm of a tiny meter wavers as you sweep the device through the air. You will have to walk in order to know if the signal is getting weaker or stronger."
+      para 'Pulling out the receiver, you check the batteries and click it on. The arm of a tiny meter wavers as you sweep the device through the air. You will have to walk in order to know if the signal is getting weaker or stronger.'
     end
 
     para "Signal strength: #{@signal_strength}%"
 
-    choice :w, "Walk toward likely sources of signal" do
-      adj = rand(40) - 8
+    choice :w, 'Walk toward likely sources of signal' do
+      adj = rand(-8..31)
       @signal_strength = (@signal_strength + adj).clamp(0, 100)
 
       proceed_to :combat, Foes.random_encounter(:hammond_perimeter, level_max: player.level + 2)
     end
     if @signal_strength >= 100
-      choice :s, "Search this area" do
+      choice :s, 'Search this area' do
         self.hammond = 'found'
-        para "With the arm of the meter buried, you must be at the source of the signal. You search, and quickly spot a wire leading up a tree, hooked to an antenna. Following the wire down, you brush leaves aside and discover a concealed hatch!"
-        
-        choice :e, "Open and enter the hatch" do
+        para 'With the arm of the meter buried, you must be at the source of the signal. You search, and quickly spot a wire leading up a tree, hooked to an antenna. Following the wire down, you brush leaves aside and discover a concealed hatch!'
+
+        choice :e, 'Open and enter the hatch' do
           replace_to :hammond_lab
         end
-        choice :m, "Mark the area on your map and leave" do
+        choice :m, 'Mark the area on your map and leave' do
           finish_scene
         end
         choose!
       end
     end
-    choice :l, "Abandon progress and leave this area of the forest" do
+    choice :l, 'Abandon progress and leave this area of the forest' do
       finish_scene
     end
     choose!
@@ -744,24 +744,24 @@ class HammondLab < Scene
 
   def enter
     first_enter do
-      para "You open the hatch, and pull a flashlight from your pack. Flicking it on and holding it in your teeth, you illuminate a long shaft and begin to descend."
+      para 'You open the hatch, and pull a flashlight from your pack. Flicking it on and holding it in your teeth, you illuminate a long shaft and begin to descend.'
       pause
-      para "At the bottom of the shaft, you find what seems to be some kind of survivalist bomb shelter."
+      para 'At the bottom of the shaft, you find what seems to be some kind of survivalist bomb shelter.'
       pause
     end
 
-    para "Crates of valuable equipment lie in various states of pillage, and discarded bottles and empty boxes of food litter the floor."
+    para 'Crates of valuable equipment lie in various states of pillage, and discarded bottles and empty boxes of food litter the floor.'
 
     if hammond == 'dead'
-      para "The body of a man lies on the floor."
+      para 'The body of a man lies on the floor.'
     else
-      para "You are overwhelmed by the smell of a blob of a man lying in an office chair, wearing a headset of some kind. His hands are wrapped around a pair of tiny devices, which he waves seemingly at random through the air."
+      para 'You are overwhelmed by the smell of a blob of a man lying in an office chair, wearing a headset of some kind. His hands are wrapped around a pair of tiny devices, which he waves seemingly at random through the air.'
     end
 
     if hammond == 'found'
       para "He is so totally engrossed in whatever he's doing that you are able to approach undetected."
 
-      choice :k, "Attack the man while he is vulnerable" do
+      choice :k, 'Attack the man while he is vulnerable' do
         self.hammond = 'dead'
         proceed_to :combat, :hammond
       end
@@ -773,27 +773,27 @@ class HammondLab < Scene
     end
 
     if hammond == 'alive'
-      dialogue "Hammond", "Feel free to let yourself out."
+      dialogue 'Hammond', 'Feel free to let yourself out.'
 
-      choice :a, "Attack him" do
+      choice :a, 'Attack him' do
         self.hammond = 'dead'
         proceed_to :combat, :hammond
       end
     end
 
     unless sacked
-      choice :r, "Ransack the place" do
+      choice :r, 'Ransack the place' do
         self.sacked = true
         para "Looking for notes that may be of use to Dylan, you roll up several large sheets of blue paper, which you are assume are blueprints. Because, you know, they're blue."
         player.inventory.add(:blueprints)
-        para "You also grab as many unopened boxes of food as will fit in your pack."
+        para 'You also grab as many unopened boxes of food as will fit in your pack.'
         player.inventory.add(:mre, 5)
         pause
       end
     end
 
-    choice :l, "Ascend the ladder" do
-      para "You climb back up the ladder"
+    choice :l, 'Ascend the ladder' do
+      para 'You climb back up the ladder'
       pause
       finish_scene
     end
@@ -802,50 +802,50 @@ class HammondLab < Scene
   end
 
   def hammond_intro_dialogue
-    para "You brace yourself for a reaction, and kick the arm of his chair. He jerks backward so hard he is almost dumped onto the ground. He fumbles the headset off and lets out a nasal whine."
-    dialogue "Hammond", "Wahh, you're the goon that keeps killing all my guards and smashing all my expensive toys!"
-    dialogue "You", "And you must be Hammond."
-    dialogue "Hammond", "Yes, in the flesh."
-    
+    para 'You brace yourself for a reaction, and kick the arm of his chair. He jerks backward so hard he is almost dumped onto the ground. He fumbles the headset off and lets out a nasal whine.'
+    dialogue 'Hammond', "Wahh, you're the goon that keeps killing all my guards and smashing all my expensive toys!"
+    dialogue 'You', 'And you must be Hammond.'
+    dialogue 'Hammond', 'Yes, in the flesh.'
+
     done = false
     until done
-      say :w, "What exactly are you doing here?" do
-        dialogue "Hammond", "Humph, I wouldn't expect a goon like you to understand. Let's just say I'm working to ensure the survival of my little gang here."
+      say :w, 'What exactly are you doing here?' do
+        dialogue 'Hammond', "Humph, I wouldn't expect a goon like you to understand. Let's just say I'm working to ensure the survival of my little gang here."
         pause
       end
-      say :g, "Who are all those violent thugs outside? You their boss?" do
-        dialogue "Hammond", "That's right. I give them food and equipment, and they run... errands for me."
+      say :g, 'Who are all those violent thugs outside? You their boss?' do
+        dialogue 'Hammond', "That's right. I give them food and equipment, and they run... errands for me."
         pause
       end
-      say :d, "Dylan says you were involved in the early work on the Spix." do
-        dialogue "Hammond", "Ah ha ha, the old fool still curses my name over that, eh? I won't deny it, I had a hand in the end of the world. Most would have shirked away from such a task, oh morals this, or impossible that. But not us!"
-        
-        say :u, "Us?" do
-          dialogue "Hammond", "Of course there were others! We're out of touch these days, forgot to top up my cell plan before armageddon."
+      say :d, 'Dylan says you were involved in the early work on the Spix.' do
+        dialogue 'Hammond', "Ah ha ha, the old fool still curses my name over that, eh? I won't deny it, I had a hand in the end of the world. Most would have shirked away from such a task, oh morals this, or impossible that. But not us!"
+
+        say :u, 'Us?' do
+          dialogue 'Hammond', "Of course there were others! We're out of touch these days, forgot to top up my cell plan before armageddon."
           pause
         end
 
         say :w, "Well, congratulations on your success. Now I'm going to stop it." do
-          dialogue "Hammond", "Ha, are you now? Ah, now I see, this has nothing to do with me or revenge, or else we wouldn't be having this conversation. You're looking for scraps or clues that might reveal an exploitable weakness."
-          para "Hammond chuckles, tenting his fingers into the semblance of a pack of sausages."
+          dialogue 'Hammond', "Ha, are you now? Ah, now I see, this has nothing to do with me or revenge, or else we wouldn't be having this conversation. You're looking for scraps or clues that might reveal an exploitable weakness."
+          para 'Hammond chuckles, tenting his fingers into the semblance of a pack of sausages.'
           pause
-          dialogue "Hammond", "Well, I think you'll find it quite indestructable and your task quite hopeless. But don't let me stop you if you want to commit suicide, easier than having my folks mop you up."
+          dialogue 'Hammond', "Well, I think you'll find it quite indestructable and your task quite hopeless. But don't let me stop you if you want to commit suicide, easier than having my folks mop you up."
 
           if sacked
-            para "His eyes wander to a box in the corner of the room."
-            dialogue "Hammond", "Seems you've already helped yourself to whatever you've wanted. What are you talking to me for?"
+            para 'His eyes wander to a box in the corner of the room.'
+            dialogue 'Hammond', "Seems you've already helped yourself to whatever you've wanted. What are you talking to me for?"
           else
             self.sacked = true
             player.inventory.add(:blueprints)
             pause
-            para "You follow his pointing finger to a large box, and rummage through it, pulling out some blue sheets of paper."
+            para 'You follow his pointing finger to a large box, and rummage through it, pulling out some blue sheets of paper.'
             pause
-            dialogue "Hammond", "Now if you'll excuse me, you're hardly the only threat to be concerned with out here."
+            dialogue 'Hammond', "Now if you'll excuse me, you're hardly the only threat to be concerned with out here."
           end
-          
+
           done = true
 
-          para "He places the headset back over his eyes and resumes whatever he was doing earlier."
+          para 'He places the headset back over his eyes and resumes whatever he was doing earlier.'
           pause
         end
 
@@ -856,7 +856,6 @@ class HammondLab < Scene
     end
   end
 end
-
 
 class PriceElectronics < Scene
   # hidden -> hostile -> confront -> friendly -> dead?
@@ -1168,31 +1167,31 @@ class Caravan < Scene
   state_variable :crew, initial: 4
 
   def enter
-    para "You walk alongside a small caravan, bound for Ottawa."
+    para 'You walk alongside a small caravan, bound for Ottawa.'
     line "Distance covered: #{kms} / 2068 km"
     line "Food remaining: #{food} days"
     para "Crew: #{crew} people"
 
     choice :p, 'Press onward' do
       blank
-      para "Dylan agrees, and gives the order to press on. You venture ahead to deal with any threats, and the wagon picks up behind you."
+      para 'Dylan agrees, and gives the order to press on. You venture ahead to deal with any threats, and the wagon picks up behind you.'
       pause
       proceed_to :combat, Foes.random_encounter(:ottawa_road, level_min: player.level - 5, level_max: player.level)
-      self.kms += d("4d10").roll.total + Dice.new(6, times: crew).roll.total
+      self.kms += d('4d10').roll.total + Dice.new(6, times: crew).roll.total
     end
 
     choice :t, 'Stop and scavage for supplies' do
       stop_and_scavage
     end
 
-    choice :c, "Pull off and make camp for the evening" do
+    choice :c, 'Pull off and make camp for the evening' do
       camp
     end
 
-    choice :d, "Have a chat with Dylan" do
+    choice :d, 'Have a chat with Dylan' do
       chat_dylan
     end
-    line ""
+    line ''
     choice :s, 'Hop onto the back of the wagon and rest (save)' do
       proceed_to :save, 'You allow yourself a few hours of shuteye while the wagon bobs along.'
     end
@@ -1204,7 +1203,7 @@ class Caravan < Scene
   end
 
   def stop_and_scavage
-    para "You spot a promising area to scavage, and signal the caravan to hold while you run over to investigate."
+    para 'You spot a promising area to scavage, and signal the caravan to hold while you run over to investigate.'
     pause
     case rand(8)
     when 0
@@ -1213,60 +1212,60 @@ class Caravan < Scene
       proceed_to :combat, Foes.random_encounter(:ottawa_road, level_max: player.level + 2)
     when 1
       para "You enter an abandoned roadside station, and discover it hasn't been completely picked over yet."
-      para "You find: "
-      
+      para 'You find: '
+
       something = false
       if rand(5) == 0
-        line "Enough food to feed the crew for a day."
+        line 'Enough food to feed the crew for a day.'
         self.food += 1
         something = true
       end
 
       if rand(10) == 0
-        line "A first aid kit."
+        line 'A first aid kit.'
         player.inventory.add(:first_aid)
         something = true
       end
 
       if rand(20) == 0
-        line "A frag grenade."
+        line 'A frag grenade.'
         player.inventory.add(:frag)
         something = true
       end
 
       if rand(50) == 0
-        line "A cache containing a well-maintained rifle and several clean boxes of ammo."
+        line 'A cache containing a well-maintained rifle and several clean boxes of ammo.'
         player.inventory.add(:rifle)
         something = true
       end
 
       unless something
-        line "A few dollars."
+        line 'A few dollars.'
         player.cash += 2
       end
       pause
     when 2..3
-      para "You cautiously approach a shanty town, and its inhabitants seem eager to trade."
+      para 'You cautiously approach a shanty town, and its inhabitants seem eager to trade.'
       pause
       proceed_to :barter, 'Trader', %i[knife full_syringe road_chow first_aid shovel].sample(3)
     end
   end
 
   def camp
-    para "You see an area of natural concealment off the road, and signal the caravan to pull over. Dylan and the others jump down and begin pulling supplies from the wagon."
-    para "After a quick meal, you help clean up and turn in for the night."
-    para "That night --"
+    para 'You see an area of natural concealment off the road, and signal the caravan to pull over. Dylan and the others jump down and begin pulling supplies from the wagon.'
+    para 'After a quick meal, you help clean up and turn in for the night.'
+    para 'That night --'
     pause
     # TODO
-    para "-- nothing else of consequence happens. HP recovered!"
+    para '-- nothing else of consequence happens. HP recovered!'
     player.hp = player.max_hp
     self.food -= 1
     pause
   end
 
   def chat_dylan
-    para "You walk alongside the wagon, where Dylan is perched up on the seat. He acknowledges you with a nod."
-    choice "Discuss the progress of the caravan" do
+    para 'You walk alongside the wagon, where Dylan is perched up on the seat. He acknowledges you with a nod.'
+    choice 'Discuss the progress of the caravan' do
       if player.ready_to_level_up?
         para 'You discuss the challenges encountered and what lies ahead.'
         dialogue 'Dylan', "We've come far, but there is still much you don't know about these roads. I'd be happy to share."
@@ -1281,8 +1280,8 @@ class Caravan < Scene
         pause
       end
     end
-    choice :l, "Make small talk and excuse yourself." do
-      para "You wander idly through a few different topics, and eventually resume your duty watching the caravan."
+    choice :l, 'Make small talk and excuse yourself.' do
+      para 'You wander idly through a few different topics, and eventually resume your duty watching the caravan.'
       pause
     end
     choose!
