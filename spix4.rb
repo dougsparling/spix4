@@ -1253,7 +1253,7 @@ class Caravan < Scene
     dmg = foe.weapon_dmg.roll.total
     case rand(6)
     when 0..2
-      stolen = dmg.clamp(1, food)
+      stolen = dmg.clamp(0, food)
       line "#{stolen} days worth of food is destroyed or stolen from the wagon!", color: :secondary
       self.food -= stolen
     when 3..4
@@ -1310,40 +1310,25 @@ class Caravan < Scene
     when 0
       para "Closing in on what looks like a supply cache, you realize too late that it's a trap!"
       pause
-      proceed_to :combat, Foes.random_encounter(:ottawa_road, level_max: player.level + 2)
+      proceed_to :combat, Foes.random_encounter(:cache_ambush, level_max: player.level + 2)
     when 1
       para "You enter an abandoned roadside station, and discover it hasn't been completely picked over yet."
       para 'You find: '
 
-      something = false
-      if rand(5) == 0
-        line 'Enough food to feed the crew for a day.'
-        self.food += 1
-        something = true
-      end
+      loot = DropSpec.new({
+        first_aid: 0.1,
+        caravan_meal: 0.2,
+        frag: 0.07,
+        rifle: 0.05
+      }).roll
 
-      if rand(10) == 0
-        line 'A first aid kit.'
-        player.inventory.add(:first_aid)
-        something = true
-      end
-
-      if rand(20) == 0
-        line 'A frag grenade.'
-        player.inventory.add(:frag)
-        something = true
-      end
-
-      if rand(50) == 0
-        line 'A cache containing a well-maintained rifle and several clean boxes of ammo.'
-        player.inventory.add(:rifle)
-        something = true
-      end
-
-      unless something
+      if loot.empty?
         line 'A few dollars.'
-        player.cash += 2
+        player.cash += rand(2..5)
+      else
+        player.inventory.add_all(window, loot)
       end
+
       pause
     when 2..3
       para 'You find a settlement, and its inhabitants seem eager to trade.'
@@ -1373,6 +1358,48 @@ class Caravan < Scene
 
       choose!
 
+    when 5
+      para "Walking through some wrecked cars, you spot one with a padlocked trunk. You suspect whoever setup this cache is savvy enough not to have wandered too far, so you'll have to act fast."
+
+      loot_spec = DropSpec.new({ caravan_meal: 3.0, first_aid: 2, rifle: 0.2, frag: 0.1 })
+
+      choice :m, "Attempt to brute force the lock (martial - 4)" do
+        self_succ, self_result = player.skill_check(recorder, :martial, modifier: -4)
+        if self_succ
+          para "You successfully force the lock! You quickly loot the trunk:"
+          player.inventory.add_all(loot_spec.roll)
+          pause
+        else
+          para "You make a fair amount of noise jimmying the lock, and hear commotion behind you."
+          pause
+          foe = Foes.random_encounter(:cache_ambush, level_max: player.level + 4)
+          foe.add_drops(loot_spec)
+          proceed_to :combat, foe
+        end
+      end
+
+      if player.trained_in?(:tech)
+        choice :t, "Attempt to pick the lock (tech - 1)" do
+          self_succ, self_result = player.skill_check(recorder, :tech, modifier: -1)
+          if self_succ
+            para "Little click on one, nothing on two... and there we have it, folks."
+            para "You swing the trunk open and get to looting."
+            player.inventory.add_all(loot_spec.roll)
+            pause
+          else
+            para "You become so focused on picking the lock that you barely notice the trap being sprung!"
+            pause
+            foe = Foes.random_encounter(:cache_ambush, level_max: player.level + 4)
+            foe.add_drops(loot_spec)
+            proceed_to :combat, foe
+          end
+        end
+      end
+      choice :l, "Leave" do
+        para "You decide not to chance it and high-tail it outta here."
+        pause
+      end
+      choose!
     else
       # TODO
     end

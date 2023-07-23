@@ -101,6 +101,16 @@ class Inventory
     @items[item] += quantity
   end
 
+  def add_all(window, items)
+    items.each do |item_id, quantity|
+      item = Items.by_id(item_id)
+      # TODO: kinda nasty to have window here 
+      window.line "#{quantity} x #{item.name}:", margin: 4
+      window.line item.description, margin: 6, color: :secondary
+      add(item_id, quantity)
+    end
+  end
+
   def remove(item, quantity: 1)
     return unless quantity > 0
     raise "removing #{quantity} #{item} that we don't have" unless has?(item) && quantity(item) >= quantity
@@ -221,5 +231,48 @@ class Barter < Scene
       # nothing
     end
     choose!
+  end
+end
+
+class DropSpec
+  attr_reader :table
+
+  def initialize(table)
+    @table = table
+  end
+
+  def roll
+    rolled = {}
+    table.each do |item_id, freq|
+      # <1 drop means it drops that % of the time
+      # =>1 drop means it can drop up to that many of it
+      quantity = if freq < 1.0
+                   if rand(100) < (freq * 100)
+                     1
+                   else
+                     0
+                   end
+                 else
+                   rand(freq.ceil) + 1
+                 end
+
+      next unless quantity > 0
+
+      rolled[item_id] = quantity
+    end
+    rolled
+  end
+
+  def +(other)
+    # TODO: could take best of either
+    DropSpec.new(table.merge(other.table))
+  end
+
+  def self.parse(spec)
+    drop_table = (spec || '').split('|').map do |drop|
+      drop_id, freq = drop.split(':')
+      [drop_id.to_sym, freq&.to_f || 1.0]
+    end
+    DropSpec.new(drop_table.to_h)
   end
 end

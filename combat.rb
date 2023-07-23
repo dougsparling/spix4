@@ -133,27 +133,12 @@ Foe = Struct.new('Foe', *foe_fields, keyword_init: true) do
     tags.include?(tag)
   end
 
-  # rolls actual drops from the frequency table
   def roll_drops
-    rolled = {}
-    drops.each do |item_id, freq|
-      # <1 drop means it drops that % of the time
-      # =>1 drop means it can drop up to that many of it
-      quantity = if freq < 1.0
-                   if rand(100) < (freq * 100)
-                     1
-                   else
-                     0
-                   end
-                 else
-                   rand(freq.ceil) + 1
-                 end
+    drops.roll
+  end
 
-      next unless quantity > 0
-
-      rolled[item_id] = quantity
-    end
-    rolled
+  def add_drops(moar_loot)
+    self.drops += moar_loot
   end
 end
 
@@ -380,12 +365,7 @@ class Combat < Scene
     return if drops.empty?
 
     para 'After surveying the carnage, you find:'
-    drops.each do |drop_id, quantity|
-      item = Items.by_id(drop_id)
-      line "#{quantity} x #{item.name}: #{item.description}", margin: 4
-      player.inventory.add(drop_id, quantity)
-    end
-    
+    player.inventory.add_all(window, drops)
     pause
   end
 

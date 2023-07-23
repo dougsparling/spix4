@@ -1,4 +1,5 @@
 require 'csv'
+require './items'
 
 class Foes
   attr_reader :foes
@@ -27,11 +28,7 @@ class Foes
 
       foe_raw[:tags] = (foe_raw[:tags] || '').split('|').map(&:to_sym)
 
-      drop_table = (foe_raw[:drops] || '').split('|').map do |drop|
-        drop_id, freq = drop.split(':')
-        [drop_id.to_sym, freq&.to_f || 1.0]
-      end
-      foe_raw[:drops] = drop_table.to_h
+      foe_raw[:drops] = DropSpec.parse(foe_raw[:drops])
 
       @foes[id.to_sym] = foe_raw
     end
