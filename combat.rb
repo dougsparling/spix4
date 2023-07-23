@@ -132,6 +132,29 @@ Foe = Struct.new('Foe', *foe_fields, keyword_init: true) do
   def tagged?(tag)
     tags.include?(tag)
   end
+
+  # rolls actual drops from the frequency table
+  def roll_drops
+    rolled = {}
+    drops.each do |item_id, freq|
+      # <1 drop means it drops that % of the time
+      # >1 drop means it can drop up to that many of it
+      quantity = if freq < 1.0
+                   if rand(100) < (freq * 100)
+                     1
+                   else
+                     0
+                   end
+                 else
+                   rand(freq.ceil) + 1
+                 end
+
+      next unless quantity > 0
+
+      rolled[item_id] = quantity
+    end
+    rolled
+  end
 end
 
 player_fields = %i[exp level] + attrs + $skills
@@ -165,7 +188,22 @@ Player = Struct.new('Player', *player_fields, keyword_init: true) do
   end
 
   def weapon_dmg
-    get_weapon&.effect_dice || d(4)
+    get_weapon&.effect_dice || unarmed_dmg
+  end
+
+  def unarmed_dmg
+    return d(4) unless trained_in? :unarmed
+
+    case unarmed
+    when 10 then d(6)
+    when 11 then d(8)
+    when 11 then d(10)
+    when 12 then d('2d6')
+    when 13 then d('2d8')
+    when 14 then d('2d10')
+    when 15..99 then d('3d8')
+    else; d(4)
+    end
   end
 
   def dr
@@ -182,6 +220,8 @@ Player = Struct.new('Player', *player_fields, keyword_init: true) do
     w = get_weapon
     if w.nil?
       :unarmed
+    elsif w.tagged?(:tech)
+      :tech
     elsif w.tagged?(:fancy)
       :fancy
     else
@@ -287,7 +327,7 @@ class Combat < Scene
       when :miss
         line "#{foe_name} #{foe.attack_verb}, but misses!"
       when :evade
-        line "#{foe_name} #{foe.attack_verb}, but you narrowly evade!"
+        line "#{foe_name} #{foe.attack_verb}, and you narrowly evade!"
       end
 
       if player.slain?
@@ -336,13 +376,16 @@ class Combat < Scene
     player.exp += foe.exp
     pause
 
-    return if foe.drops.empty?
+    drops = foe.roll_drops
+    return if drops.empty?
 
-    foe.drops.each do |drop|
-      item = Items.by_id(drop)
-      para "After surveying the carnage, you find an intact #{item.name}: #{item.description}"
-      player.inventory.add(drop)
+    para 'After surveying the carnage, you find:'
+    drops.each do |drop_id, quantity|
+      item = Items.by_id(drop_id)
+      line "#{quantity} x #{item.name}: #{item.description}", margin: 4
+      player.inventory.add(drop_id, quantity)
     end
+    
     pause
   end
 

@@ -464,7 +464,8 @@ class CharacterSheet < Scene
         # TODO: can probably extract a generic inventory picker from this...
         idx = 1
         weapons.each do |item_id, item, _quantity|
-          choice idx.to_s, "Equip '#{item.name}'" do
+          wpn_skill = item.tags.intersection(%i[fancy tech]).first || :martial
+          choice idx.to_s, "Equip '#{item.name}' (#{wpn_skill})" do
             para "You grip the #{item.name} in your hands and turn it over a few times. Better than nothing, you suppose."
             player.inventory.equip_weapon(item_id)
             pause
@@ -517,14 +518,26 @@ class LevelUp < Scene
       player.max_hp += 3
     end
 
+    if player.trained_in?(:unarmed)
+      choice :u, "Train unarmed skill (#{player.unarmed} -> #{player.unarmed + 1})" do
+        player.unarmed += 1
+      end
+    else
+      defaulted, default_mod = player.default_of(:unarmed)
+      current = player[defaulted] + default_mod
+      choice :u, "Train unarmed skill (#{current} -> 9)" do
+        player.unarmed = 9
+      end
+    end
+
     if player.trained_in?(:fancy)
-      choice :f, "Train with fancy weapon skill (#{player.fancy} -> #{player.fancy + 1})" do
+      choice :f, "Train fancy weapon skill (#{player.fancy} -> #{player.fancy + 1})" do
         player.fancy += 1
       end
     elsif !player.inventory.by_tag(:fancy).empty?
       defaulted, default_mod = player.default_of(:fancy)
       current = player[defaulted] + default_mod
-      choice :f, "Train with fancy weapon skill (#{current} -> 7)" do
+      choice :f, "Train fancy weapon skill (#{current} -> 7)" do
         player.fancy = 7
       end
     end
@@ -1112,7 +1125,7 @@ class CraigsOffice < Scene
     end
 
     choice :l, 'Leave.' do
-      para 'You make some small talk and politely excuse yourself.'
+      para 'You a bit of small talk and politely excuse yourself.'
       pause
       finish_scene
     end
@@ -1177,9 +1190,10 @@ class Caravan < Scene
     choice :p, 'Press onward' do
       blank
       if food > 1
+        self.food -= 1
         para 'Dylan agrees, and gives the order to press on. You venture ahead to deal with any threats, and the wagon picks up behind you.'
         pause
-        proceed_to :combat, Foes.random_encounter(:ottawa_road, level_min: player.level - 5, level_max: player.level)
+        proceed_to :combat, Foes.random_encounter(:ottawa_road, level_min: player.level - 10, level_max: player.level)
         self.kms += d('4d10').roll.total + Dice.new(6, times: crew).roll.total
       else
         para "With so little food remaining, Dylan doesn't think it wise to commit to a hard day of travel."
@@ -1211,9 +1225,10 @@ class Caravan < Scene
 
   def reenter(from, result)
     return unless from == :combat
+
     outcome, foe = result
     return unless outcome == :fled
-    
+
     para "As you flee, the caravan is left defenseless, and #{foe.name} wreaks havoc with its #{foe.weapon}."
     dmg = foe.weapon_dmg.roll.total
     case rand(4)
@@ -1222,20 +1237,19 @@ class Caravan < Scene
       line "#{stolen} days worth of food is stolen from the wagon!", color: :secondary
       self.food -= stolen
     when 2
-      killed = (if dmg > 10 then 2 else 1 end).clamp(0, crew)
+      killed = (dmg > 10 ? 2 : 1).clamp(0, crew)
       if killed > 1
         para "#{killed} crew are slaughtered in the rampage!"
       elsif killed == 1
-        para "A crewman is left dead in the aftermath!"
+        para 'A crewman is left dead in the aftermath!'
       else
-        para "The wagon is battered and beaten, but otherwise intact."
+        para 'The wagon is battered and beaten, but otherwise intact.'
       end
       self.crew -= killed
     when 3
-      line ""
-
+      line 'The caravan manages to repel the attack!'
+    end
     pause
-    
   end
 
   def stop_and_scavage
@@ -1283,28 +1297,31 @@ class Caravan < Scene
     when 2..3
       para 'You cautiously approach a shanty town, and its inhabitants seem eager to trade.'
       pause
-      proceed_to :barter, 'waster', %i[knife full_syringe road_chow first_aid shovel caravan_meal].sample(3)
+      proceed_to :barter,
+                 'waster',
+                 %i[knife full_syringe road_chow first_aid shovel caravan_meal].sample(3),
+                 %i[weapon heal grenade tech].sample(1)
     when 4
-      salary = d("2d10").roll.total + 10
+      salary = d('2d10').roll.total + 10
       para "You encounter a down-on-his-luck waster, who is willing to join on for $#{salary}. You have $#{player.cash}."
       if player.cash >= salary
-        choice :h, "Hire him into the caravan" do
+        choice :h, 'Hire him into the caravan' do
           player.cash -= salary
           self.crew += 1
-          para "You fork over the cash and lead him back to the caravan."
+          para 'You fork over the cash and lead him back to the caravan.'
           pause
         end
       end
-      choice :d, "Decline his offer but wish him the best of luck" do
-        para "He nods dejectedly and wanders off into the wastes."
+      choice :d, 'Decline his offer but wish him the best of luck' do
+        para 'He nods dejectedly and wanders off into the wastes.'
         pause
       end
-      choice :a, "Attack him and take whatever he has" do
+      choice :a, 'Attack him and take whatever he has' do
         proceed_to :combat, :waster
       end
 
       choose!
-        
+
     else
       # TODO
     end
@@ -1317,11 +1334,11 @@ class Caravan < Scene
       para 'After sharing a meal, you help clean up and turn in for the night.'
       line 'HP fully recovered!', color: :secondary
       pause
-      
+
       player.hp = player.max_hp
       self.food -= 1
     else
-      para 'You all have a restless night, bellies growling. The only thing that sustains you is a hope that tomorrow will be better.'
+      para 'You and the caravaners have a restless night, bellies growling. The only thing that sustains you is a hope that tomorrow will be better.'
       pause
     end
   end
@@ -1341,6 +1358,15 @@ class Caravan < Scene
       else
         para "After a brief update, it becomes apparent there isn't much to discuss."
         pause
+      end
+    end
+    if food <= 1 && crew > 1
+      choice :p, 'Table a modest proposal' do
+        blank
+        para "You explain that the food situation isn't likely to improve, and propose a macabre solution. He glances nervously at the crew, playing and laughing in the wagon, then back to you. He gives you an intense stare, as if measuring your conviction. Finally he breaks eye contact and gives a subtle nod toward them."
+        pause
+        proceed_to :combat, :crew
+        self.crew -= 1
       end
     end
     choice :l, 'Make small talk and excuse yourself.' do

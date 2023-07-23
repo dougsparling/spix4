@@ -26,7 +26,12 @@ class Foes
       foe_raw[:level] = foe_raw[:level]&.to_i || 0
 
       foe_raw[:tags] = (foe_raw[:tags] || '').split('|').map(&:to_sym)
-      foe_raw[:drops] = (foe_raw[:drops] || '').split('|').map(&:to_sym)
+
+      drop_table = (foe_raw[:drops] || '').split('|').map do |drop|
+        drop_id, freq = drop.split(':')
+        [drop_id.to_sym, freq&.to_f || 1.0]
+      end
+      foe_raw[:drops] = drop_table.to_h
 
       @foes[id.to_sym] = foe_raw
     end
@@ -38,7 +43,8 @@ class Foes
     end
 
     def by_id(id)
-      foe_raw = instance.foes[id] or raise "unknown foe: #{id}"
+      raise "must be symbol: #{id}" unless id.is_a? Symbol
+      foe_raw = instance.foes[id] or raise "unknown foe: #{id}, loaded: #{instance.foes.keys.sort}"
       Foe.new(**foe_raw)
     end
 

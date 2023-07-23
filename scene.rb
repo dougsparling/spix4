@@ -43,12 +43,13 @@ class SceneOwner
   end
 
   def finish_scene(result = nil)
-    raise "nothing to finish?" if @scenes.empty?
+    raise 'nothing to finish?' if @scenes.empty?
+
     finished = @scenes.pop
     reentering = @scenes.last
-    if reentering&.respond_to?(:reenter)
-      reentering.send(:reenter, finished.scene_name, result)
-    end
+    return unless reentering&.respond_to?(:reenter)
+
+    reentering.send(:reenter, finished.scene_name, result)
   end
 
   def dehydrate

@@ -12,7 +12,7 @@ require './spix4'
 # detect irb/require and don't jump into game
 return unless $PROGRAM_NAME == __FILE__
 
-window = if ENV['window']&.downcase == 'plain'
+window = if ENV['WINDOW']&.downcase == 'plain'
            PlainWindow.new
          else
            CursesWindow.new

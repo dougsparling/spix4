@@ -130,18 +130,44 @@ class Inventory
 end
 
 class Barter < Scene
-  def initialize(shopkeep_name, goods)
+  def initialize(shopkeep_name, goods, accepts = [])
     @shopkeep_name = shopkeep_name
     @goods = goods
+    @accepts = accepts
+    @selling = false
   end
 
   def enter
-    para "Trading with #{@shopkeep_name}. You have $#{player.cash}."
+    activity = @selling ? 'Selling to' : 'Buying from'
+    para "#{activity} #{@shopkeep_name}. You have $#{player.cash}."
 
-    @goods.each_with_index do |good_id, index|
-      item = Items.by_id(good_id)
-      choice (index + 1).to_s, "Inspect #{item.name} ($#{item.value})" do
-        inspect_good(good_id)
+    if @selling
+      choice :b, 'Buy' do
+        @selling = false
+      end
+      index = 1
+      player.inventory.by_tag(*@accepts).each do |item_id, item, quantity|
+        next if item.tagged?(:plot)
+
+        sells_for = [item.value / 4, 1].max
+        choice index.to_s, "Sell #{item.name} for $#{sells_for} (#{quantity})" do
+          player.inventory.remove(item_id)
+          player.cash += sells_for
+        end
+        index += 1
+      end
+    else
+      unless @accepts.empty?
+        choice :s, 'Sell' do
+          @selling = true
+        end
+      end
+
+      @goods.each_with_index do |good_id, index|
+        item = Items.by_id(good_id)
+        choice (index + 1).to_s, "Inspect #{item.name} ($#{item.value})" do
+          inspect_good(good_id)
+        end
       end
     end
 
@@ -154,8 +180,7 @@ class Barter < Scene
 
   def inspect_good(good_id)
     item = Items.by_id(good_id)
-    tags = item.tags.map(&->(t) { t.to_s.capitalize }).join(', ')
-    para "Inspecting '#{item.name}' (#{tags}):"
+    para "Inspecting '#{item.name}':"
     para item.description.to_s, margin: 4
 
     if player.inventory.has?(good_id)
