@@ -42,8 +42,13 @@ class SceneOwner
     @scenes.push(scene)
   end
 
-  def finish_scene
-    @scenes.pop unless @scenes.empty?
+  def finish_scene(result = nil)
+    raise "nothing to finish?" if @scenes.empty?
+    finished = @scenes.pop
+    reentering = @scenes.last
+    if reentering&.respond_to?(:reenter)
+      reentering.send(:reenter, finished.scene_name, result)
+    end
   end
 
   def dehydrate
@@ -54,8 +59,7 @@ class SceneOwner
     @state = hash[:scene_state]
     @player = Player.hydrate(hash[:player])
     # TODO: doesn't handle scene args, but okay for now
-    @scenes = []
-    replace_to(*hash[:scenes].map(&:to_sym))
+    transition_to(*hash[:scenes].map(&:to_sym))
   end
 end
 
@@ -88,7 +92,7 @@ class Scene
   end
 
   def scene_name
-    underscore(self.class.name)
+    underscore(self.class.name).to_sym
   end
 
   def recorder
@@ -103,6 +107,10 @@ class Scene
 
     yield
     @did_first_on_enter = true
+  end
+
+  def to_s
+    scene_name
   end
 
   private
@@ -121,7 +129,7 @@ class Scene
 
   def self.state_variable(name, initial: nil, shared: false)
     define_method(name) do
-      state_key = shared ? :globals : scene_name.to_sym
+      state_key = shared ? :globals : scene_name
 
       owner.state[state_key] ||= {}
       if owner.state[state_key].key?(name)
@@ -132,7 +140,7 @@ class Scene
     end
 
     define_method("#{name}=") do |new_val|
-      state_key = shared ? :globals : scene_name.to_sym
+      state_key = shared ? :globals : scene_name
 
       # don't store initial values
       owner.state[state_key] ||= {}

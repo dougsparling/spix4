@@ -386,7 +386,7 @@ end
 
 class GameOver < Scene
   def enter
-    para 'You fall to the ground helplessly, and your final thoughts are of the Spix and the doomed people of Winnipeg...'
+    para 'You fall to the ground helplessly, and your final thoughts are of the Spix and the doomed people of this world...'
     pause
     exit
   end
@@ -1167,6 +1167,8 @@ class Caravan < Scene
   state_variable :crew, initial: 4
 
   def enter
+    self.food += player.inventory.drain(:caravan_meal)
+
     para 'You walk alongside a small caravan, bound for Ottawa.'
     line "Distance covered: #{kms} / 2068 km"
     line "Food remaining: #{food} days"
@@ -1174,10 +1176,15 @@ class Caravan < Scene
 
     choice :p, 'Press onward' do
       blank
-      para 'Dylan agrees, and gives the order to press on. You venture ahead to deal with any threats, and the wagon picks up behind you.'
-      pause
-      proceed_to :combat, Foes.random_encounter(:ottawa_road, level_min: player.level - 5, level_max: player.level)
-      self.kms += d('4d10').roll.total + Dice.new(6, times: crew).roll.total
+      if food > 1
+        para 'Dylan agrees, and gives the order to press on. You venture ahead to deal with any threats, and the wagon picks up behind you.'
+        pause
+        proceed_to :combat, Foes.random_encounter(:ottawa_road, level_min: player.level - 5, level_max: player.level)
+        self.kms += d('4d10').roll.total + Dice.new(6, times: crew).roll.total
+      else
+        para "With so little food remaining, Dylan doesn't think it wise to commit to a hard day of travel."
+        pause
+      end
     end
 
     choice :t, 'Stop and scavage for supplies' do
@@ -1200,6 +1207,35 @@ class Caravan < Scene
       proceed_to :character_sheet
     end
     choose!
+  end
+
+  def reenter(from, result)
+    return unless from == :combat
+    outcome, foe = result
+    return unless outcome == :fled
+    
+    para "As you flee, the caravan is left defenseless, and #{foe.name} wreaks havoc with its #{foe.weapon}."
+    dmg = foe.weapon_dmg.roll.total
+    case rand(4)
+    when 0..1
+      stolen = dmg.clamp(1, food)
+      line "#{stolen} days worth of food is stolen from the wagon!", color: :secondary
+      self.food -= stolen
+    when 2
+      killed = (if dmg > 10 then 2 else 1 end).clamp(0, crew)
+      if killed > 1
+        para "#{killed} crew are slaughtered in the rampage!"
+      elsif killed == 1
+        para "A crewman is left dead in the aftermath!"
+      else
+        para "The wagon is battered and beaten, but otherwise intact."
+      end
+      self.crew -= killed
+    when 3
+      line ""
+
+    pause
+    
   end
 
   def stop_and_scavage
@@ -1247,20 +1283,47 @@ class Caravan < Scene
     when 2..3
       para 'You cautiously approach a shanty town, and its inhabitants seem eager to trade.'
       pause
-      proceed_to :barter, 'Trader', %i[knife full_syringe road_chow first_aid shovel].sample(3)
+      proceed_to :barter, 'waster', %i[knife full_syringe road_chow first_aid shovel caravan_meal].sample(3)
+    when 4
+      salary = d("2d10").roll.total + 10
+      para "You encounter a down-on-his-luck waster, who is willing to join on for $#{salary}. You have $#{player.cash}."
+      if player.cash >= salary
+        choice :h, "Hire him into the caravan" do
+          player.cash -= salary
+          self.crew += 1
+          para "You fork over the cash and lead him back to the caravan."
+          pause
+        end
+      end
+      choice :d, "Decline his offer but wish him the best of luck" do
+        para "He nods dejectedly and wanders off into the wastes."
+        pause
+      end
+      choice :a, "Attack him and take whatever he has" do
+        proceed_to :combat, :waster
+      end
+
+      choose!
+        
+    else
+      # TODO
     end
   end
 
   def camp
     para 'You see an area of natural concealment off the road, and signal the caravan to pull over. Dylan and the others jump down and begin pulling supplies from the wagon.'
-    para 'After a quick meal, you help clean up and turn in for the night.'
-    para 'That night --'
-    pause
-    # TODO
-    para '-- nothing else of consequence happens. HP recovered!'
-    player.hp = player.max_hp
-    self.food -= 1
-    pause
+
+    if food > 0
+      para 'After sharing a meal, you help clean up and turn in for the night.'
+      line 'HP fully recovered!', color: :secondary
+      pause
+      
+      player.hp = player.max_hp
+      self.food -= 1
+    else
+      para 'You all have a restless night, bellies growling. The only thing that sustains you is a hope that tomorrow will be better.'
+      pause
+    end
   end
 
   def chat_dylan
@@ -1281,7 +1344,7 @@ class Caravan < Scene
       end
     end
     choice :l, 'Make small talk and excuse yourself.' do
-      para 'You wander idly through a few different topics, and eventually resume your duty watching the caravan.'
+      para 'You wander idly through a few different topics, and eventually return to your duty watching the caravan.'
       pause
     end
     choose!

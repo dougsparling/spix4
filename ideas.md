@@ -3,6 +3,7 @@ future features:
 * ammo for guns?
 * fix skills, DRY
 * extract inventory system with scrolling selection list
+* DR penetration / damage types
 
 observations:
 * writing is taking most of the time

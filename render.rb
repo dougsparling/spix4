@@ -212,8 +212,8 @@ class CursesWindow < BaseWindow
     str
   end
 
-  def para(text, width: @current.maxx, margin: 0)
-    line(text, width:, margin:)
+  def para(text, width: @current.maxx, margin: 0, color: :primary)
+    line(text, width:, margin:, color:)
     newline
   end
 

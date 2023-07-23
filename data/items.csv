@@ -2,7 +2,7 @@
 "slurpee","slurpee","One of Winnipeg's famed iced cola beverages. ","3","1d4","heal"
 "hamburger","hamburger","Two buns past their prime cradle a wad of what you hope is animal meat.","8","1d6","heal"
 "first_aid","first aid kit","A small pack of sundry items that somehow allow the user to heal serious wounds in the heat of combat.","18","2d6","heal"
-"full_syringe","full syringe","A syringe full of neon-coloured liquid.","1","2d3","grenade|unarmed"
+"full_syringe","full syringe","A syringe full of neon-coloured liquid.","20","2d3","grenade|unarmed"
 "shovel","shovel","A sturdy shovel. Could be used to dig a grave, if you’re into that.","15","1d4","weapon"
 "recurve_bow","recurve bow","A well-worn but serviceable bow, and an ample quiver of sturdy arrows that can be recovered after battle.","40","1d8","weapon|fancy"
 "knife","knife","A poorly made but otherwise usable knife. May be thrust through lighter armours.","20","1d6","weapon"
@@ -18,3 +18,4 @@
 "bear_heart","heart of the cocaine bear","Somehow the heart of the cocaine-adled bear still beats.","0","2d8","heal|totem"
 "road_chow","road chow","A small lunchbox of various odds and ends, like a bento made from broken dreams.","10","1d6","heal"
 "rifle","hunting rifle","A hunting rifle and enough ammo to endanger an entire species.","200","2d6","weapon|tech"
+"caravan_meal","day worth of provisions","A collection of questionable canned goods and scavenged supplies. Enough to sustain a small group of people for a day.","50","",""

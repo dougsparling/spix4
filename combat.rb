@@ -263,7 +263,7 @@ class Combat < Scene
       if did_run && !foe.tagged?(:plot)
         line 'You run in panic stricken fear!'
         pause
-        finish_scene
+        finish_scene [:fled, @foe]
         return
       else
         line "You scramble for an opportunity to escape, but #{@foe.name} gives none."
@@ -274,7 +274,7 @@ class Combat < Scene
 
     if foe.slain?
       victory
-      finish_scene
+      finish_scene [:victory, @foe]
     else
       result, roll = foe.strike(recorder, player)
       case result
@@ -294,9 +294,10 @@ class Combat < Scene
         totem_id, totem, = player.inventory.by_tag(:totem).sample
         para 'The world begins to darken...'
         if totem
-          para "... and the #{totem.name} leaps from your pack, bursting as it absorbs the blow!"
-          heal_roll = totem.effect_dice.roll
+          para "... and the #{totem.name} leaps from your pack, bursting as it absorbs the blow and restores your strength!"
+          heal_roll = totem.effect_dice.roll.total
           player.heal(heal_roll)
+          player.inventory.remove(totem_id)
         else
           proceed_to :game_over
         end

@@ -1,6 +1,6 @@
 class Dice
   def initialize(die, times: 1)
-    raise "roll what?! #{times}d#{die}" if die < 1 || times < 1
+    raise "roll what?! #{times}d#{die}" if die < 0 || times < 0
 
     @times = times
     @die = die

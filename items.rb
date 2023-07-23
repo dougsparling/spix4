@@ -86,6 +86,12 @@ class Inventory
     @items.key?(item_id)
   end
 
+  def drain(item)
+    amount = quantity(item)
+    remove(item, quantity: amount)
+    amount
+  end
+
   def quantity(item)
     @items[item] || 0
   end
@@ -95,10 +101,11 @@ class Inventory
     @items[item] += quantity
   end
 
-  def remove(item)
-    raise "removing item we don't have: #{item}" unless @items.key?(item)
+  def remove(item, quantity: 1)
+    return unless quantity > 0
+    raise "removing #{quantity} #{item} that we don't have" unless has?(item) && quantity(item) >= quantity
 
-    @items[item] -= 1
+    @items[item] -= quantity
 
     return unless @items[item] <= 0
 
