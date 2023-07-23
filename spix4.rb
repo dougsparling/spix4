@@ -388,7 +388,7 @@ class GameOver < Scene
   def enter
     para 'You fall to the ground helplessly, and your final thoughts are of the Spix and the doomed people of this world...'
     pause
-    exit
+    transition_to :title
   end
 end
 
@@ -1179,26 +1179,46 @@ class Caravan < Scene
   state_variable :food, initial: 28
   state_variable :crew, initial: 4
 
+  PointOfInterest = Struct.new(:dist, :habitat, :desc)
+
+  POI = [
+    [0, :ottawa_road, "You are travelling down one of the most boring stretches of highway in Canada. The occasional ruined rest stop or broken section of road is all that breaks up the monotony."],
+    [475, :ignace, "You pass through a tiny town, utterly deserted. A sign says 'Welcome to Ignace' and you swear you hear festive music from somewhere. Probably just delusion from boredom."],
+    [525, :ottawa_road, "Finally the vast emptiness of the prairies gives way to dense forest. "],
+    [700, :thunder_bay, "You see signs for Thunder Bay. You take the bypass: it's reputation as a den of depravity dates long before falling into ruin."],
+    [720, :ottawa_road, "You continue your relentless journey down the ruined highway, with Lake Superior to your right. Under other circumstances you may have found beauty here."],
+    [1200, :shoals, "You see signs for Shoals National Park and campground. You doubt anybody is enjoying a peaceful weekend at the lake."],
+    [1250, :ottawa_road, "You march tirelessly over the Canadian shield. The trees and scrubs grow out of control and crowd the narrow highway."],
+    [1600, :sudbury, "You pass through the ruins of Sudbury. You're not sure what these folk did to deserve what appears to be a total and complete carpet bombing, but little remains that isn't glowing a sickly green."],
+    [1650, :ottawa_road, "You start to see signs for Ottawa. The morale of the caravan is starting to pick up."],
+    [1969, :ottawa_perimeter, "Distances to Ottawa on signs have dropped to double digits. You cautiously pass abandoned fortifications that show signs of heavy fighting from long ago."],
+    [2068, :ottawa, "You have closed to within visual range of a ring wall around the Parliament building."],
+    [9999, :wat, "???"]
+  ].map { |d| PointOfInterest.new(*d) }
+
+  def poi_index
+    POI.find_index { |poi| poi.dist > kms } - 1
+  end
+
+  def current_poi
+    POI[poi_index]
+  end
+
+  def next_poi
+    POI[poi_index + 1]
+  end
+
   def enter
     self.food += player.inventory.drain(:caravan_meal)
 
     para 'You walk alongside a small caravan, bound for Ottawa.'
+    para current_poi.desc
     line "Distance covered: #{kms} / 2068 km"
     line "Food remaining: #{food} days"
     para "Crew: #{crew} people"
 
     choice :p, 'Press onward' do
-      blank
-      if food > 1
-        self.food -= 1
-        para 'Dylan agrees, and gives the order to press on. You venture ahead to deal with any threats, and the wagon picks up behind you.'
-        pause
-        proceed_to :combat, Foes.random_encounter(:ottawa_road, level_min: player.level - 10, level_max: player.level)
-        self.kms += d('4d10').roll.total + Dice.new(6, times: crew).roll.total
-      else
-        para "With so little food remaining, Dylan doesn't think it wise to commit to a hard day of travel."
-        pause
-      end
+      press_onward
     end
 
     choice :t, 'Stop and scavage for supplies' do
@@ -1229,16 +1249,20 @@ class Caravan < Scene
     outcome, foe = result
     return unless outcome == :fled
 
-    para "As you flee, the caravan is left defenseless, and #{foe.name} wreaks havoc with its #{foe.weapon}."
+    para "As you flee, the caravan is left defenseless, and the #{foe.name} wreaks havoc with its #{foe.weapon}."
     dmg = foe.weapon_dmg.roll.total
-    case rand(4)
-    when 0..1
+    case rand(6)
+    when 0..2
       stolen = dmg.clamp(1, food)
-      line "#{stolen} days worth of food is stolen from the wagon!", color: :secondary
+      line "#{stolen} days worth of food is destroyed or stolen from the wagon!", color: :secondary
       self.food -= stolen
-    when 2
-      killed = (dmg > 10 ? 2 : 1).clamp(0, crew)
-      if killed > 1
+    when 3..4
+      killed = (dmg / 10).clamp(0, crew)
+      if killed >= crew
+        para "#{foe.name.capitalize} shows no mercy. The wagon is destroyed, Dylan is killed in the attack, and the remaining crew flee into the wastes. The awful sight of it overwhelms you."
+        pause
+        transition_to :game_over
+      elsif killed > 1
         para "#{killed} crew are slaughtered in the rampage!"
       elsif killed == 1
         para 'A crewman is left dead in the aftermath!'
@@ -1246,10 +1270,37 @@ class Caravan < Scene
         para 'The wagon is battered and beaten, but otherwise intact.'
       end
       self.crew -= killed
-    when 3
-      line 'The caravan manages to repel the attack!'
+    when 5
+      line "#{foe.name} knocks the wagon around for awhile, but get bored and leaves before doing any serious damage."
     end
     pause
+  end
+
+  def press_onward
+    if food > 1
+      blank
+      self.food -= 1
+      para 'Dylan agrees, and gives the order to press on. You venture ahead to deal with any threats, and the wagon picks up behind you.'
+      
+      # force player to go through all POIs, hashtag #railroading yo
+      base_dist = d('2d10').roll
+      crew_bonus = Dice.new(6, times: crew).roll
+      dist = base_dist.total + crew_bonus.total
+      recorder["traveled #{dist} km; base ", base_dist, " + crew bonus ", crew_bonus]
+      if kms + dist > next_poi.dist
+        newline
+        para next_poi.desc if next_poi.desc
+        self.kms = next_poi.dist
+      else
+        self.kms += dist
+      end
+
+      pause
+      proceed_to :combat, Foes.random_encounter(current_poi.habitat, level_max: player.level)
+    else
+      para "With so little food remaining, Dylan doesn't think it wise to commit to a hard day of travel."
+      pause
+    end
   end
 
   def stop_and_scavage
@@ -1295,20 +1346,20 @@ class Caravan < Scene
       end
       pause
     when 2..3
-      para 'You cautiously approach a shanty town, and its inhabitants seem eager to trade.'
+      para 'You find a settlement, and its inhabitants seem eager to trade.'
       pause
       proceed_to :barter,
                  'waster',
                  %i[knife full_syringe road_chow first_aid shovel caravan_meal].sample(3),
                  %i[weapon heal grenade tech].sample(1)
     when 4
-      salary = d('2d10').roll.total + 10
+      salary = d('1d20').roll.total + 15
       para "You encounter a down-on-his-luck waster, who is willing to join on for $#{salary}. You have $#{player.cash}."
-      if player.cash >= salary
+      if player.cash >= salary && crew < 6
         choice :h, 'Hire him into the caravan' do
           player.cash -= salary
           self.crew += 1
-          para 'You fork over the cash and lead him back to the caravan.'
+          para 'With a firm handshake and exchange of cash, the waster joins your crew. You lead him back to the caravan and introduce him to the others.'
           pause
         end
       end
@@ -1331,7 +1382,7 @@ class Caravan < Scene
     para 'You see an area of natural concealment off the road, and signal the caravan to pull over. Dylan and the others jump down and begin pulling supplies from the wagon.'
 
     if food > 0
-      para 'After sharing a meal, you help clean up and turn in for the night.'
+      para 'After sharing a meal, you help clean up and keep watch while the others turn in for the night.'
       line 'HP fully recovered!', color: :secondary
       pause
 

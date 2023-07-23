@@ -138,7 +138,7 @@ Foe = Struct.new('Foe', *foe_fields, keyword_init: true) do
     rolled = {}
     drops.each do |item_id, freq|
       # <1 drop means it drops that % of the time
-      # >1 drop means it can drop up to that many of it
+      # =>1 drop means it can drop up to that many of it
       quantity = if freq < 1.0
                    if rand(100) < (freq * 100)
                      1
@@ -176,7 +176,7 @@ Player = Struct.new('Player', *player_fields, keyword_init: true) do
   end
 
   def next_level_exp
-    (level.to_f**1.7).ceil.to_i * 25
+    (level.to_f**1.8).ceil.to_i * 25
   end
 
   def ready_to_level_up?
@@ -339,7 +339,7 @@ class Combat < Scene
           player.heal(heal_roll)
           player.inventory.remove(totem_id)
         else
-          proceed_to :game_over
+          transition_to :game_over
         end
       end
       pause
