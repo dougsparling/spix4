@@ -95,8 +95,8 @@ class IntroTownCautious < Scene
     bruiser = Foes.by_id(:bruiser)
     bruiser.injure(7)
 
-    replace_to :winnipeg
-    proceed_to :tavern, true
+    transition_to :winnipeg
+    proceed_to :tavern
     proceed_to :combat, bruiser
   end
 end
@@ -280,7 +280,7 @@ class Dylan < Scene
 
         dialogue 'Dylan', "Right... anyway, as I saying, Hammond started this whole mess with his work prototyping the early Spix, and he must have kept detailed notes. Bring them to me, and I'll take it from there. Hammond's lab was supposedly underground in Assiniboine forest, though it's overrun with raiders and other nasties these days."
         dialogue 'Dylan', "Also, as you make progress toward our shared goals, report back to me periodically and I'll teach you whatever else I can to aid you."
-        dialogue 'Dylan', "And finally, I'll let the people here know they can trust you, but cause trouble and you'll be face down on the road you came in on."
+        dialogue 'Dylan', "And finally, I'll tell the people here to tolerate your presence, but cause trouble and you'll end up face down on whatever road you came in on."
 
         para 'You nod, satisfied both at having finally extracted some useful information and at the chance to start cracking skulls again.'
 
@@ -452,11 +452,11 @@ class CharacterSheet < Scene
       end
     end
     newline
-    line "Weapon: #{player.weapon} ~ Armour: None"
+    line "Weapon: #{player.weapon} (#{player.weapon_dmg})"
     newline
     choice :w, 'Equip weapon' do
       blank
-      weapons = player.inventory.filter { |_, item| item.tagged?(:weapon) }
+      weapons = player.inventory.by_tag(:weapon)
       if weapons.empty?
         line "Seems you don't have any implements of violence among your meager posseessions."
         pause
@@ -483,17 +483,43 @@ class CharacterSheet < Scene
         choose!
       end
     end
+    
+    choice :h, 'Heal' do
+      drugging_up = true
+      while drugging_up
+        blank
+        para "Aching from the beatings you've taken, you rummage through your pack in search of relief."  
+        para "You have #{player.hp} / #{player.max_hp} HP"
+
+        noms = player.inventory.by_tag(:heal)
+        choice :l, "Live with the pain instead" do
+          drugging_up = false
+        end
+        noms.each_with_index do |(item_id, item, quantity), idx|
+          choice idx.to_s, "Use '#{item.name}' (#{quantity} remaining, #{item.effect_dice})" do
+            healed = item.effect_dice.roll
+            player.heal(healed.total)
+            player.inventory.remove(item_id)
+            line "You recover #{healed.total} HP (#{healed})", color: :secondary
+            pause
+          end
+        end
+        choose!
+      end
+    end
+
     choice :i, 'Inventory' do
       blank
       para 'You dump your rucksack onto the ground, and take stock of everything inside:'
       line 'Moths fly from the empty sack.' if player.inventory.empty?
-
+    
       player.inventory.each do |_, item, quantity|
         line "#{quantity} #{item.name}"
       end
       newline
       pause
     end
+    
 
     choice :d, 'Done' do
       finish_scene
@@ -1306,7 +1332,7 @@ class Caravan < Scene
   def stop_and_scavage
     para 'You spot a promising area to scavage, and signal the caravan to hold while you run over to investigate.'
     pause
-    case rand(8)
+    case rand(0..5)
     when 0
       para "Closing in on what looks like a supply cache, you realize too late that it's a trap!"
       pause

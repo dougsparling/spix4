@@ -39,10 +39,10 @@ class PlainWindow < BaseWindow
     puts "#{name}: #{text}"
   end
 
-  def choose!
+  def choose!(action = nil)
     until @choices.empty?
       newline
-      c = $stdin.getch.to_s.downcase
+      c = (action || $stdin.getch).to_s.downcase
 
       raise 'weird input, bail!' if c =~ /[^[:print:]]/
 
@@ -141,11 +141,11 @@ class CursesWindow < BaseWindow
     para(text, margin: name.size + 2)
   end
 
-  def choose!
+  def choose!(action = nil)
     until @choices.empty?
       newline
       @current << @choices.keys.sort.join(', ') << '> '
-      c = @current.getch.to_s.downcase
+      c = (action || @current.getch).to_s.downcase
       if @choices.key?(c)
         newline
         choice = @choices[c]
@@ -159,7 +159,7 @@ class CursesWindow < BaseWindow
         # dialog.getch
         # dialog.close
         # @current.redraw
-
+        action = nil # failsafe for pre-selected invalid options
         line "Invalid option #{c}"
       end
     end

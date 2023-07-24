@@ -4,10 +4,15 @@ require './items'
 module Combatant
   def new_round!
     @can_evade = true
+    @injured = false
   end
 
   def can_evade?
     @can_evade
+  end
+
+  def was_injured?
+    @injured
   end
 
   def forfeit_evade!
@@ -92,6 +97,7 @@ module Combatant
     dmg = 0 if dmg < 0
     self.hp -= dmg
     self.hp = 0 if self.hp.negative?
+    @injured = dmg.positive?
   end
 
   def heal(amount)
@@ -238,12 +244,16 @@ Player = Struct.new('Player', *player_fields, keyword_init: true) do
       martial: 9,
       evasion: 7
     )
-    player.inventory.add(:first_aid, 3)
+    player.inventory.add(:first_aid, 1)
+    player.inventory.add(:road_chow, 2)
     player
   end
 end
 
 class Combat < Scene
+  state_variable :auto_fight, initial: false
+  state_variable :transcripts, initial: true
+
   attr_reader :foe
 
   def initialize(foe)
@@ -261,26 +271,23 @@ class Combat < Scene
   end
 
   def enter
-    para "You have encountered '#{foe.name}'!"
-    line "#{player.name}'s HP:    #{player.hp} / #{player.max_hp}", margin: 4
-    line "#{foe_name}'s HP:   #{foe.hp} / #{foe.max_hp}", margin: 4
-    newline
-
-    # pre-round tasks
+    encounter_header
+    
     player.new_round!
     foe.new_round!
+    cancel = false
 
-    para 'Your next action?'
     choice 'Attack' do
       player_strike(0)
+      @retake_action = :a if auto_fight
     end
     choice 'Power Attack' do
       player.forfeit_evade!
-      player_strike(2)
+      player_strike(1)
+      @retake_action = :p if auto_fight
     end
     choice 'Inventory' do
       cancel = rummage_through_inventory
-      return if cancel
     end
     choice 'Escape' do
       did_run, = player.contest(recorder, foe, :evasion, modifier: 3)
@@ -294,41 +301,78 @@ class Combat < Scene
         line "You scramble for an opportunity to escape, but #{@foe.name} gives none."
       end
     end
+    choice 'Settings' do
+      cancel = true
+      af_verb = if(auto_fight) then "Disable" else "Enable" end
+      choice :a, "#{af_verb} Auto-Fight (re-take previous Attack if no damage dealt that round)" do
+        self.auto_fight = !auto_fight
+      end
 
-    choose!
+      tr_verb = if(transcripts) then "Hide" else "Show" end
+      choice :t, "#{tr_verb} Transcripts (detailed skill and damage calculation)" do
+        self.transcripts = !transcripts
+      end
+
+      choice :d, "Done" do
+      end
+      choose!
+    end
+
+    choose!(@retake_action)
+    newline
+
+    # player took menu action that didn't advance combat round
+    return if cancel
 
     if foe.slain?
       victory
       finish_scene [:victory, @foe]
-    else
-      result, roll = foe.strike(recorder, player)
-      case result
-      when :hit
-        if roll.total.positive?
-          line "#{foe_name} #{foe.attack_verb} with its #{foe.weapon}, dealing #{roll.total} damage!"
-        else
-          line "#{foe_name} #{foe.attack_verb}, but the #{foe.weapon} is shrugged off by your armour!"
-        end
-      when :miss
-        line "#{foe_name} #{foe.attack_verb}, but misses!"
-      when :evade
-        line "#{foe_name} #{foe.attack_verb}, and you narrowly evade!"
-      end
-
-      if player.slain?
-        totem_id, totem, = player.inventory.by_tag(:totem).sample
-        para 'The world begins to darken...'
-        if totem
-          para "... and the #{totem.name} leaps from your pack, bursting as it absorbs the blow and restores your strength!"
-          heal_roll = totem.effect_dice.roll.total
-          player.heal(heal_roll)
-          player.inventory.remove(totem_id)
-        else
-          transition_to :game_over
-        end
-      end
-      pause
+      return
     end
+
+    result, roll = foe.strike(recorder, player)
+    case result
+    when :hit
+      if roll.total.positive?
+        line "#{foe_name} #{foe.attack_verb} with its #{foe.weapon}, dealing #{roll.total} damage!"
+      else
+        line "#{foe_name} #{foe.attack_verb}, but the #{foe.weapon} is shrugged off by your armour!"
+      end
+    when :miss
+      line "#{foe_name} #{foe.attack_verb}, but misses!"
+    when :evade
+      line "#{foe_name} #{foe.attack_verb}, and you narrowly evade!"
+    end
+
+    if player.slain?
+      totem_id, totem, = player.inventory.by_tag(:totem).sample
+      para 'The world begins to darken...'
+      if totem
+        para "... and the #{totem.name} leaps from your pack, bursting as it absorbs the blow and restores your strength!"
+        heal_roll = totem.effect_dice.roll.total
+        player.heal(heal_roll)
+        player.inventory.remove(totem_id)
+      else
+        transition_to :game_over
+      end
+    end
+
+    if player.was_injured? || foe.was_injured?
+      @retake_action = nil 
+      pause
+    else
+      # hmmm 
+      sleep 0.25
+    end
+  end
+
+  def encounter_header
+    para "You have encountered '#{foe.name}'!"
+    line "#{player.name}'s HP:    #{player.hp} / #{player.max_hp}", margin: 4
+    line "#{foe_name}'s HP:   #{foe.hp} / #{foe.max_hp}", margin: 4
+    newline
+
+    para 'Your next action?'
   end
 
   def player_strike(mod)
@@ -406,5 +450,13 @@ class Combat < Scene
     end
     choose!
     back
+  end
+
+  def recorder
+    if transcripts
+      super
+    else
+      ->(*ignored) {} # noop
+    end
   end
 end

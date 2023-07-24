@@ -187,6 +187,9 @@ class Load < Scene
         load(save)
       end
     end
+    choice :b, "Back" do
+      finish_scene
+    end
     choose!
   end
 
