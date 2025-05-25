@@ -51,6 +51,8 @@ class PlainWindow < BaseWindow
         choice = @choices[c]
         @choices.clear
         choice.call
+      elsif c == '10'
+        # newline, ignore
       else
         line "Invalid option #{c}"
       end

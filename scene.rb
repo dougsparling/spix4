@@ -57,6 +57,7 @@ class SceneOwner
   end
 
   def hydrate(hash)
+    puts hash
     @state = hash[:scene_state]
     @player = Player.hydrate(hash[:player])
     # TODO: doesn't handle scene args, but okay for now
@@ -187,7 +188,7 @@ class Load < Scene
         load(save)
       end
     end
-    choice :b, "Back" do
+    choice :b, 'Back' do
       finish_scene
     end
     choose!

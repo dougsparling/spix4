@@ -1,4 +1,4 @@
-require 'debug'
+require 'pry'
 
 require './scene'
 require './render'

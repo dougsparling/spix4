@@ -26,7 +26,8 @@ module Combatant
     else
       defaulted, default_mod = default_of(skill)
       if defaulted
-        recorder[name.capitalize, " untrained in #{skill}, defaults to #{defaulted} + #{default_mod}"]
+        operator = default_mod >= 0 ? '+' : ''
+        recorder[name.capitalize, " untrained in #{skill}, defaults to #{defaulted} #{operator}#{default_mod}"]
         target = self[defaulted] + default_mod
         skill = defaulted
       else
@@ -273,7 +274,7 @@ class Combat < Scene
 
   def enter
     encounter_header
-    
+
     player.new_round!
     foe.new_round!
     cancel = false
@@ -304,17 +305,17 @@ class Combat < Scene
     end
     choice 'Settings' do
       cancel = true
-      af_verb = if(auto_fight) then "Disable" else "Enable" end
+      af_verb = auto_fight ? 'Disable' : 'Enable'
       choice :a, "#{af_verb} Auto-Fight (re-take previous Attack if no damage dealt that round)" do
         self.auto_fight = !auto_fight
       end
 
-      tr_verb = if(transcripts) then "Hide" else "Show" end
+      tr_verb = transcripts ? 'Hide' : 'Show'
       choice :t, "#{tr_verb} Transcripts (detailed skill and damage calculation)" do
         self.transcripts = !transcripts
       end
 
-      choice :d, "Done" do
+      choice :d, 'Done' do
       end
       choose!
     end
@@ -358,11 +359,11 @@ class Combat < Scene
       end
     end
 
-    if @retake_action != nil && !player.was_injured? && !foe.was_injured?
+    if !@retake_action.nil? && !player.was_injured? && !foe.was_injured?
       # hmmm
       # sleep 0.25
     else
-      @retake_action = nil 
+      @retake_action = nil
       pause
     end
   end

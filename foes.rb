@@ -41,6 +41,7 @@ class Foes
 
     def by_id(id)
       raise "must be symbol: #{id}" unless id.is_a? Symbol
+
       foe_raw = instance.foes[id] or raise "unknown foe: #{id}, loaded: #{instance.foes.keys.sort}"
       Foe.new(**foe_raw)
     end

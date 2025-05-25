@@ -35,13 +35,16 @@ class Intro < Scene
 
     say "I've buried a few people along the way." do
       player.martial += 2
+      line '+2 martial', color: :secondary
     end
     say 'Danger is easily avoided if one is ready for it.' do
       player.evasion += 2
+      line '+2 evasion', color: :secondary
     end
     say 'Taken my fair share of bruises but always came out on top.' do
       player.max_hp += 6
       player.hp += 6
+      line '+6 HP', color: :secondary
     end
     choose!
 
@@ -109,7 +112,7 @@ class IntroTownCasual < Scene
     pause
     para 'You plant your boots on the porch of what must pass for a tavern in this hovel, grab a shovel leaning against the railing, and cry out, "Dylan! Show yourself!"'
     pause
-    para 'After a moment, an absolute beast of a man kicks the door open, and you hop backwards in surprise. You do not recognize the man.'
+    para 'After a moment, an absolute beast of a man kicks the door open, and you hop backwards in surprise. You sense this isn\'t who you\'re looking for'
     pause
     dialogue bruiser.name,
              "Who the hell are you? Eh, won't matter anyway once I'm scraping you off the bottom of me shoe."
@@ -119,7 +122,7 @@ class IntroTownCasual < Scene
     player.inventory.equip_weapon(:shovel)
 
     replace_to :winnipeg
-    proceed_to :tavern, true
+    proceed_to :tavern
     proceed_to :combat, bruiser
   end
 end
@@ -164,7 +167,7 @@ class Tavern < Scene
   end
 
   def drink_dialogue
-    choice :b, "(slide $5 across the bar) I'll have whatever's on tap" do
+    choice :b, "(slide $5 across the bar) I'll have whatever this gets me" do
       player.pay(5)
       dialogue 'Bartender', 'He slaps the cash and slides it behind the bar.'
       case rand(40)
@@ -280,6 +283,10 @@ class Dylan < Scene
 
         dialogue 'Dylan', "Right... anyway, as I saying, Hammond started this whole mess with his work prototyping the early Spix, and he must have kept detailed notes. Bring them to me, and I'll take it from there. Hammond's lab was supposedly underground in Assiniboine forest, though it's overrun with raiders and other nasties these days."
         dialogue 'Dylan', "Also, as you make progress toward our shared goals, report back to me periodically and I'll teach you whatever else I can to aid you."
+
+        para 'Speak to Dylan when you have obtained enough experience to level up', color: :secondary
+        pause
+
         dialogue 'Dylan', "And finally, I'll tell the people here to tolerate your presence, but cause trouble and you'll end up face down on whatever road you came in on."
 
         para 'You nod, satisfied both at having finally extracted some useful information and at the chance to start cracking skulls again.'
@@ -484,16 +491,16 @@ class CharacterSheet < Scene
         choose!
       end
     end
-    
+
     choice :h, 'Heal' do
       drugging_up = true
       while drugging_up
         blank
-        para "Aching from the beatings you've taken, you rummage through your pack in search of relief."  
+        para "Aching from the beatings you've taken, you rummage through your pack in search of relief."
         para "You have #{player.hp} / #{player.max_hp} HP"
 
         noms = player.inventory.by_tag(:heal)
-        choice :l, "Live with the pain instead" do
+        choice :l, 'Live with the pain instead' do
           drugging_up = false
         end
         noms.each_with_index do |(item_id, item, quantity), idx|
@@ -513,14 +520,13 @@ class CharacterSheet < Scene
       blank
       para 'You dump your rucksack onto the ground, and take stock of everything inside:'
       line 'Moths fly from the empty sack.' if player.inventory.empty?
-    
+
       player.inventory.each do |_, item, quantity|
         line "#{quantity} #{item.name}"
       end
       newline
       pause
     end
-    
 
     choice :d, 'Done' do
       finish_scene
@@ -625,7 +631,7 @@ class Cooking < Scene
       end
 
       if antagonize > 3
-        say "Are there no other customers here because they've all died?" do
+        say "Are there no other customers here because they've all died of food poisoning?" do
           para "The cook, finally reaching the limit of verbal abuse he's willing to tolerate, slams the spatula onto the counter."
           dialogue 'Cook', 'You motherfucker, what did I tell you?'
           para 'And with that he effortlessly leaps the counter and swings at you!'
@@ -737,12 +743,13 @@ class Camp < Scene
 
   def reenter(from, result)
     return unless from == :combat
+
     finish_scene
 
     outcome, foe = result
     return unless outcome == :fled
 
-    item_id, item, _ = player.inventory.by_tag(:heal, :grenade, :weapon).sample
+    item_id, item, = player.inventory.by_tag(:heal, :grenade, :weapon).sample
     return if !item || item.tagged?(:plot)
 
     para "You leave your camp and equipment unattended, and #{foe.name} rummages though it, running off with your #{item.name}!"
@@ -1179,7 +1186,7 @@ class CraigsOffice < Scene
     end
 
     choice :l, 'Leave.' do
-      para 'You a bit of small talk and politely excuse yourself.'
+      para 'You exchange a bit of small talk about how horrible the outside world is and politely excuse yourself.'
       pause
       finish_scene
     end
@@ -1236,18 +1243,18 @@ class Caravan < Scene
   PointOfInterest = Struct.new(:dist, :habitat, :desc)
 
   POI = [
-    [0, :ottawa_road, "You are travelling down one of the most boring stretches of highway in Canada. The occasional ruined rest stop or broken section of road is all that breaks up the monotony."],
+    [0, :ottawa_road, 'You are travelling down one of the most boring stretches of highway in Canada. The occasional ruined rest stop or broken section of road is all that breaks up the monotony.'],
     [475, :ignace, "You pass through a tiny town, utterly deserted. A sign says 'Welcome to Ignace' and you swear you hear festive music from somewhere. Probably just delusion from boredom."],
-    [525, :ottawa_road, "Finally the vast emptiness of the prairies gives way to dense forest. "],
+    [525, :ottawa_road, 'Finally the vast emptiness of the prairies gives way to dense forest. '],
     [700, :thunder_bay, "You see signs for Thunder Bay. You take the bypass: it's reputation as a den of depravity pre-dates the apocalypse."],
-    [720, :ottawa_road, "You continue your relentless journey down the ruined highway, with Lake Superior to your right. Under other circumstances you may have found beauty here."],
-    [1200, :shoals, "You see signs for Shoals National Park and campground. You doubt anybody is enjoying a peaceful weekend at the lake."],
-    [1250, :ottawa_road, "You march tirelessly over the Canadian shield. The trees and scrubs grow out of control and crowd the narrow highway."],
+    [720, :ottawa_road, 'You continue your relentless journey down the ruined highway, with Lake Superior to your right. Under other circumstances you may have found beauty here.'],
+    [1200, :shoals, 'You see signs for Shoals National Park and campground. You doubt anybody is enjoying a peaceful weekend at the lake.'],
+    [1250, :ottawa_road, 'You march tirelessly over the Canadian shield. The trees and scrubs grow out of control and crowd the narrow highway.'],
     [1600, :sudbury, "You pass through the ruins of Sudbury. You're not sure what these folk did to deserve what appears to be a total and complete carpet bombing, but little remains that isn't glowing a sickly green."],
-    [1650, :ottawa_road, "You start to see signs for Ottawa. The morale of the caravan is starting to pick up."],
-    [1969, :ottawa_perimeter, "Distances to Ottawa on signs have dropped to double digits. You cautiously pass abandoned fortifications that show signs of heavy fighting from long ago."],
-    [2068, :ottawa, "You have closed to within visual range of a ring wall around the Parliament building."],
-    [9999, :wat, "???"]
+    [1650, :ottawa_road, 'You start to see signs for Ottawa. The morale of the caravan is starting to pick up.'],
+    [1969, :ottawa_perimeter, 'Distances to Ottawa on signs have dropped to double digits. You cautiously pass abandoned fortifications that show signs of heavy fighting from long ago.'],
+    [2068, :ottawa, 'You have closed to within visual range of a ring wall around the Parliament building.'],
+    [9999, :wat, '???']
   ].map { |d| PointOfInterest.new(*d) }
 
   def poi_index
@@ -1335,12 +1342,12 @@ class Caravan < Scene
       blank
       self.food -= 1
       para 'Dylan agrees, and gives the order to press on. You venture ahead to deal with any threats, and the wagon picks up behind you.'
-      
+
       # force player to go through all POIs, hashtag #railroading yo
       base_dist = d('2d12').roll
       crew_bonus = Dice.new(8, times: crew).roll
       dist = base_dist.total + crew_bonus.total
-      recorder["traveled #{dist} km; base ", base_dist, " + crew bonus ", crew_bonus]
+      recorder["traveled #{dist} km; base ", base_dist, ' + crew bonus ', crew_bonus]
       if kms + dist > next_poi.dist
         newline
         para next_poi.desc if next_poi.desc
@@ -1370,11 +1377,11 @@ class Caravan < Scene
       para 'You find: '
 
       loot = DropSpec.new({
-        first_aid: 0.1,
-        caravan_meal: 0.2,
-        frag: 0.07,
-        rifle: 0.05
-      }).roll
+                            first_aid: 0.1,
+                            caravan_meal: 0.2,
+                            frag: 0.07,
+                            rifle: 0.05
+                          }).roll
 
       if loot.empty?
         line 'A few dollars.'
@@ -1417,14 +1424,14 @@ class Caravan < Scene
 
       loot_spec = DropSpec.new({ caravan_meal: 3.0, first_aid: 2, rifle: 0.2, frag: 0.1 })
 
-      choice :m, "Attempt to brute force the lock (martial - 3)" do
+      choice :m, 'Attempt to brute force the lock (martial - 3)' do
         self_succ, self_result = player.skill_check(recorder, :martial, modifier: -3)
         if self_succ
-          para "You successfully force the lock! You quickly loot the trunk:"
+          para 'You successfully force the lock! You quickly loot the trunk:'
           player.inventory.add_all(window, loot_spec.roll)
           pause
         else
-          para "You make a fair amount of noise jimmying the lock, and hear commotion behind you."
+          para 'You make a fair amount of noise jimmying the lock, and hear commotion behind you.'
           pause
           foe = Foes.random_encounter(:cache_ambush, level_max: player.level + 4)
           foe.add_drops(loot_spec)
@@ -1433,15 +1440,15 @@ class Caravan < Scene
       end
 
       if player.trained_in?(:tech)
-        choice :t, "Attempt to pick the lock (tech - 1)" do
+        choice :t, 'Attempt to pick the lock (tech - 1)' do
           self_succ, self_result = player.skill_check(recorder, :tech, modifier: -1)
           if self_succ
-            para "Little click on one, nothing on two... and there we have it, folks."
-            para "You swing the trunk open and get to looting."
+            para 'Little click on one, nothing on two... and there we have it, folks.'
+            para 'You swing the trunk open and get to looting.'
             player.inventory.add_all(loot_spec.roll)
             pause
           else
-            para "You become so focused on picking the lock that you barely notice the trap being sprung!"
+            para 'You become so focused on picking the lock that you barely notice the trap being sprung!'
             pause
             foe = Foes.random_encounter(:cache_ambush, level_max: player.level + 4)
             foe.add_drops(loot_spec)
@@ -1449,8 +1456,8 @@ class Caravan < Scene
           end
         end
       end
-      choice :l, "Leave" do
-        para "You decide not to chance it and high-tail it outta here."
+      choice :l, 'Leave' do
+        para 'You decide not to chance it and high-tail it outta here.'
         pause
       end
       choose!

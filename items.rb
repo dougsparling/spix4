@@ -104,7 +104,7 @@ class Inventory
   def add_all(window, items)
     items.each do |item_id, quantity|
       item = Items.by_id(item_id)
-      # TODO: kinda nasty to have window here 
+      # TODO: kinda nasty to have window here
       window.line "#{quantity} x #{item.name}:", margin: 4
       window.line item.description, margin: 6, color: :secondary
       add(item_id, quantity)
