@@ -13,7 +13,11 @@ class SceneOwner
   end
 
   def main_loop
-    loop_once until @scenes.empty?
+    loop_once until game_over?
+  end
+
+  def game_over?
+    @scenes.empty?
   end
 
   def loop_once

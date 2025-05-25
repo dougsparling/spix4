@@ -11,14 +11,34 @@ require './combat'
 
 require './spix4'
 
-class WSWindow < BaseWindow
+# Class that bridges the window API expected by the game with a websocket
+class WSBridge < BaseWindow
   def initialize(ws)
     super()
     @ws = ws
+    @incoming = Thread::Queue.new
+
+    ws.on :message do |event|
+      puts "received #{event.data}"
+      @incoming.push(event.data.chomp)
+    end
+
+    # ws.on :error do |_event|
+    #   @incoming.close
+    # end
+
+    ws.on :close do |_event|
+      puts 'incoming closed'
+      @incoming.close
+    end
+  end
+
+  def closed?
+    @incoming.closed?
   end
 
   def blank
-    # no-op
+    send(:blank)
   end
 
   def refresh
@@ -49,7 +69,17 @@ class WSWindow < BaseWindow
     end
 
     choices = @choices.map { |key, choice| { key:, text: choice[0] } }
+
     send(:choices, choices:)
+
+    until @choices.empty?
+      c = receive_latest.downcase
+      next unless @choices.key?(c)
+
+      choice = @choices[c][1]
+      @choices.clear
+      choice.call
+    end
   end
 
   def line(text, width: 0, margin: 0, color: nil)
@@ -58,6 +88,7 @@ class WSWindow < BaseWindow
 
   def prompt(label = '')
     send(:prompt, { label: })
+    receive_latest
   end
 
   def para(text, width: 0, margin: 0)
@@ -69,11 +100,15 @@ class WSWindow < BaseWindow
   end
 
   def pause
-    # no-op
+    send(:pause)
+  end
+
+  def receive_latest
+    @incoming.clear
+    @incoming.pop
   end
 
   def send(type, data = {})
-    puts "#{type}: #{data}"
     @ws.send({ type:, data: }.to_json)
   end
 end
@@ -81,26 +116,14 @@ end
 WSServer = lambda do |env|
   if Faye::WebSocket.websocket?(env)
     ws = Faye::WebSocket.new(env)
-    bridge = WSWindow.new(ws)
+    bridge = WSBridge.new(ws)
     scenes = SceneOwner.new(bridge)
     scenes.proceed_to :title
 
     Thread.new do
-      # TODO: kinda need something like a coroutine here to suspend awaiting user input ... ws.on(:message) maybe?
-      scenes.loop_once
-    end
-
-    ws.on :message do |event|
-      # TODO
-    end
-
-    ws.on :error do |event|
-      p [:close, event.code, event.reason]
-    end
-
-    ws.on :close do |event|
-      p [:close, event.code, event.reason]
-      ws = nil
+      scenes.loop_once until scenes.game_over? || bridge.closed?
+      # TODO: not closing...
+      ws.close
     end
 
     # Return async Rack response
