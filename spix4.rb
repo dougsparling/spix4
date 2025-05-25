@@ -320,8 +320,8 @@ class Dylan < Scene
         dialogue 'Dylan', "Great. The wagon's out back, ready to hit the trail to Oregon."
         dialogue 'You', 'Oregon?'
         dialogue 'Dylan', 'Sorry, Ottawa. Wrong game.'
-        para "You only have a beat to ponder what he's talking about before he leads you out into the main room of the tavern. Seems a small crowd has formed."
-        dialogue 'Dylan', 'My fellow countrymmen! The time has come for us to embark upon --'
+        para "You only have a second to ponder what he's talking about before he leads you out into the main room of the tavern. Seems a small crowd has formed."
+        dialogue 'Dylan', 'My fellow countrymen! The time has come for us to embark upon --'
         pause
         blank
         para 'You tune out yet another one of his self-aggrandizing speeches and look out into the crowd, and they seem to be eating it up.'
@@ -329,7 +329,7 @@ class Dylan < Scene
         para 'After doing a few rounds, both through the crowd and at the bar, Dylan is back beside you and notices your expression.'
         pause
         dialogue 'Dylan', "I know what you're thinking. But the truth is folks here don't have much hope, 'specially for so-called heroes. And now, in their eyes, because of you their leader is leaving. Probably never to return. So don't hold it against them."
-        para 'He claps your shoulder and leads you out the back door. You ponder the fates of the simple folk in the bar, then turn and leave.'
+        para 'He claps your shoulder and leads you out the back door. You give the simple folk in the bar a final glance, then turn and leave.'
         transition_to :caravan
       end
     elsif player.inventory.has?(:blueprints)
@@ -344,7 +344,7 @@ class Dylan < Scene
         pause
         para 'He continues to comb over the blueprints, and after a few minutes begins to tap a spot on the page absentmindedly.'
         dialogue 'Dylan', 'I wonder -- seems as through the interior of it is lined with access corridors. Just big enough for maintenance crews to crawl through. Somebody inside them could also deal some real damage. But either way, have to get in somewhere.'
-        para 'He traces his finger through the blueprints with one hand, and the other tugs at what little hairs remains on his head.'
+        para 'He traces his finger through the blueprints with one hand, and the other tugs at what little hair remains on his head.'
         pause
         dialogue 'Dylan', "There is a hatch near the base of its 'spine', but it's just as armoured as the rest of it. There must have been some kind of key to open it. Hmm, maybe there's a note about it, oh!"
         para 'Suddenly his eyes light up and he starts flipping back through pages.'
@@ -368,6 +368,7 @@ class Dylan < Scene
         pause
         dialogue 'You', "Guess I'll be hitting the road then."
         para 'He grits his teeth and rolls his head, settling his gaze at the ceiling.'
+        pause
         dialogue 'Dylan', "Ah dammit. This is too important to leave to one person. Give me some time to round up anybody willing to help, and we'll form a caravan. We can cover food, transport, navigation. You can handle security, and of course I'll manage the whole thing."
         dialogue 'You', "That's unexpectedly generous."
         dialogue 'Dylan', "Well, we're just lifting you up to the jaws of the beast, you'll still have to take the leap yourself."
@@ -654,7 +655,7 @@ class Blacksmith < Scene
     para 'He mumbles to himself while you browse his offerings.'
     pause
     finish_scene
-    proceed_to :barter, 'Blacksmith', %i[shovel knife wavy_sword]
+    proceed_to :barter, 'Blacksmith', %i[shovel knife wavy_sword], %i[weapon]
   end
 end
 
@@ -719,7 +720,6 @@ class Camp < Scene
     when 21..30
       para 'You awaken to the sound of brush crunching underfoot. You spring from your tent to confront whatever is out there...'
       pause
-      finish_scene
       proceed_to :combat, Foes.random_encounter(:camp, level_max: player.level)
     when 31..38
       para 'However, distant but unnerving noises interrupt your sleep throughout the night.'
@@ -733,6 +733,22 @@ class Camp < Scene
       pause
       finish_scene
     end
+  end
+
+  def reenter(from, result)
+    return unless from == :combat
+    finish_scene
+
+    outcome, foe = result
+    return unless outcome == :fled
+
+    item_id, item, _ = player.inventory.by_tag(:heal, :grenade, :weapon).sample
+    return if !item || item.tagged?(:plot)
+
+    para "You leave your camp and equipment unattended, and #{foe.name} rummages though it, running off with your #{item.name}!"
+    pause
+
+    player.inventory.remove(item_id)
   end
 end
 
@@ -775,6 +791,18 @@ class HammondApproach < Scene
     end
     choose!
   end
+
+  def reenter(from, result)
+    return unless from == :combat
+
+    outcome, foe = result
+    return unless outcome == :fled
+
+    newline
+    para "While fleeing #{foe.name}, you've lost track of where you were, and moved further from the signal."
+    @signal_strength = (@signal_strength - rand(1..5)).clamp(0, 100)
+    pause
+  end
 end
 
 class HammondLab < Scene
@@ -794,7 +822,7 @@ class HammondLab < Scene
     if hammond == 'dead'
       para 'The body of a man lies on the floor.'
     else
-      para 'You are overwhelmed by the smell of a blob of a man lying in an office chair, wearing a headset of some kind. His hands are wrapped around a pair of tiny devices, which he waves seemingly at random through the air.'
+      para 'You are overwhelmed by the smell eminating from a blob of a man lying in an office chair, wearing a headset of some kind. His hands are wrapped around a pair of tiny devices, which he waves seemingly at random through the air.'
     end
 
     if hammond == 'found'
@@ -1120,7 +1148,7 @@ class CraigsOffice < Scene
   state_variable :intro, initial: true
   state_variable :like, initial: 0
   def enter
-    para "You stand inside Craig's small office, which consists of boxes rostling for space with a desk underneath a bunk bed, tucked into a room barely large enough to hold both. Boxes stacked neatly along the walls provide only a narrow path to the chair Craig is sitting in."
+    para "You stand inside Craig's small office, which consists of boxes jostling for space with a desk underneath a bunk bed, tucked into a room barely large enough to hold both. Boxes stacked neatly along the walls provide only a narrow path to the chair Craig is sitting in."
     para 'He awkwardly shuffles his glance between his work, you and your weapon and gives you a forced smile.'
 
     return intro_dialogue if intro
@@ -1130,7 +1158,7 @@ class CraigsOffice < Scene
         dialogue 'Craig', 'Only if you tell him the mighty Craig sent you, mwahahaha!'
         para 'After a beat you realize this was a joke and give a polite chuff in response.'
         if player.inventory.has?(:octocopter)
-          para 'You flip open bag while expressing thanks, and pull out an octocopter, dropping it on his desk. Craig winces as the dirty thing lands on a stack of papers, and moves it to an empty surface.'
+          para 'You flip open your bag while expressing thanks, and pull out an octocopter, dropping it on his desk. Craig winces as the dirty thing lands on a stack of papers, and moves it to an empty surface.'
           pause
           para 'Without delay, he excitedly starts prying, spudging, loosening and unscrewing various parts, mumbling things and laughing to himself about inappropriate use of inverse reactive current and slipshod unilateral phase detractors...'
           pause
@@ -1146,8 +1174,8 @@ class CraigsOffice < Scene
       end
     end
 
-    choice :b, 'Ask about any other equipment he might be willing to part with' do
-      proceed_to :barter, 'Craig', %i[first_aid snitch frag]
+    choice :b, 'Ask about any other equipment he might be willing to part with.' do
+      proceed_to :barter, 'Craig', %i[first_aid snitch frag], %i[tech heal]
     end
 
     choice :l, 'Leave.' do
@@ -1211,7 +1239,7 @@ class Caravan < Scene
     [0, :ottawa_road, "You are travelling down one of the most boring stretches of highway in Canada. The occasional ruined rest stop or broken section of road is all that breaks up the monotony."],
     [475, :ignace, "You pass through a tiny town, utterly deserted. A sign says 'Welcome to Ignace' and you swear you hear festive music from somewhere. Probably just delusion from boredom."],
     [525, :ottawa_road, "Finally the vast emptiness of the prairies gives way to dense forest. "],
-    [700, :thunder_bay, "You see signs for Thunder Bay. You take the bypass: it's reputation as a den of depravity dates long before falling into ruin."],
+    [700, :thunder_bay, "You see signs for Thunder Bay. You take the bypass: it's reputation as a den of depravity pre-dates the apocalypse."],
     [720, :ottawa_road, "You continue your relentless journey down the ruined highway, with Lake Superior to your right. Under other circumstances you may have found beauty here."],
     [1200, :shoals, "You see signs for Shoals National Park and campground. You doubt anybody is enjoying a peaceful weekend at the lake."],
     [1250, :ottawa_road, "You march tirelessly over the Canadian shield. The trees and scrubs grow out of control and crowd the narrow highway."],
@@ -1260,7 +1288,7 @@ class Caravan < Scene
     end
     line ''
     choice :s, 'Hop onto the back of the wagon and rest (save)' do
-      proceed_to :save, 'You allow yourself a few hours of shuteye while the wagon bobs along.'
+      proceed_to :save, 'You allow yourself a few hours of shuteye while the others tend to mundane chores.'
     end
     newline
     choice :m, 'View character sheet' do
@@ -1309,8 +1337,8 @@ class Caravan < Scene
       para 'Dylan agrees, and gives the order to press on. You venture ahead to deal with any threats, and the wagon picks up behind you.'
       
       # force player to go through all POIs, hashtag #railroading yo
-      base_dist = d('2d10').roll
-      crew_bonus = Dice.new(6, times: crew).roll
+      base_dist = d('2d12').roll
+      crew_bonus = Dice.new(8, times: crew).roll
       dist = base_dist.total + crew_bonus.total
       recorder["traveled #{dist} km; base ", base_dist, " + crew bonus ", crew_bonus]
       if kms + dist > next_poi.dist
@@ -1389,11 +1417,11 @@ class Caravan < Scene
 
       loot_spec = DropSpec.new({ caravan_meal: 3.0, first_aid: 2, rifle: 0.2, frag: 0.1 })
 
-      choice :m, "Attempt to brute force the lock (martial - 4)" do
-        self_succ, self_result = player.skill_check(recorder, :martial, modifier: -4)
+      choice :m, "Attempt to brute force the lock (martial - 3)" do
+        self_succ, self_result = player.skill_check(recorder, :martial, modifier: -3)
         if self_succ
           para "You successfully force the lock! You quickly loot the trunk:"
-          player.inventory.add_all(loot_spec.roll)
+          player.inventory.add_all(window, loot_spec.roll)
           pause
         else
           para "You make a fair amount of noise jimmying the lock, and hear commotion behind you."

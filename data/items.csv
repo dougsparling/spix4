@@ -11,7 +11,7 @@
 "octocopter","octocopter","A small battered drone outfitted with what look like a pair of nail guns. Perhaps some useful information can be extracted from it. Or it could be hurled at somebody in a pinch.","75","4d4","grenade|tech"
 "encyclopedia","electronics encyclopedia","A comprehensive tome on electronics, mechanics, and other technological wizardry.","10","","tech|plot"
 "receiver","radio S-meter","A crude but effective measure of distance to whoever or whatever was controlling the octocopters, and others like it.","0","","tech|plot"
-"frag","frag grenades","An improvised explosive that requires skill to employ, but inflicts tremendous damage.","25","2d6","grenade|fancy"
+"frag","frag grenade","An improvised explosive that requires skill to employ, but inflicts tremendous damage.","25","2d6","grenade|fancy"
 "snitch","snitch","A guided explosive ball that requires no skill to use, but most of the payload has been traded for mechanical wings and a camera.","30","2d3","grenade"
 "mre","rations","A box labeled 'MRE', contains a compact meal that can be wolfed down quickly.","15","2d4","heal"
 "blueprints","spix blueprints","Several large sheets of paper detailing the high level design of the Spix: a humanoid cyborg perhaps a hundred meters tall, outfitted with an arsenal that could challenge an entire army in a straight fight.","100","","plot"

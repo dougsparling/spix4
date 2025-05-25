@@ -185,6 +185,7 @@ Player = Struct.new('Player', *player_fields, keyword_init: true) do
   def unarmed_dmg
     return d(4) unless trained_in? :unarmed
 
+    # TOOD: this is comically OP
     case unarmed
     when 10 then d(6)
     when 11 then d(8)
@@ -357,12 +358,12 @@ class Combat < Scene
       end
     end
 
-    if player.was_injured? || foe.was_injured?
+    if @retake_action != nil && !player.was_injured? && !foe.was_injured?
+      # hmmm
+      # sleep 0.25
+    else
       @retake_action = nil 
       pause
-    else
-      # hmmm 
-      sleep 0.25
     end
   end
 
