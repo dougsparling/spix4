@@ -16,6 +16,6 @@
 "mre","rations","A box labeled 'MRE', contains a compact meal that can be wolfed down quickly.","15","2d4","heal"
 "blueprints","spix blueprints","Several large sheets of paper detailing the high level design of the Spix: a humanoid cyborg perhaps a hundred meters tall, outfitted with an arsenal that could challenge an entire army in a straight fight.","100","","plot"
 "bear_heart","heart of the cocaine bear","Somehow the heart of the cocaine-adled bear still beats.","0","2d8","heal|totem"
-"road_chow","road chow","A small lunchbox of various odds and ends, like a bento made from broken dreams.","10","1d6","heal"
+"road_chow","road chow","A small lunchbox containing various odds and ends, like a bento of broken dreams.","10","1d6","heal"
 "rifle","hunting rifle","A hunting rifle and enough ammo to endanger an entire species.","200","2d6","weapon|tech"
 "caravan_meal","day worth of provisions","Food scavaged from a variety of questionable sources. Enough to sustain a small group of people for a day.","50","",""

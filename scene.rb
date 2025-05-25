@@ -13,12 +13,14 @@ class SceneOwner
   end
 
   def main_loop
-    until @scenes.empty?
-      # loop clearing, resetting cursor and re-drawing the scene
-      @window.blank
-      @scenes.last.enter
-      @window.refresh
-    end
+    loop_once until @scenes.empty?
+  end
+
+  def loop_once
+    # loop clearing, resetting cursor and re-drawing the scene
+    @window.blank
+    @scenes.last.enter
+    @window.refresh
   end
 
   def transition_to(next_scene)

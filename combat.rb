@@ -186,15 +186,14 @@ Player = Struct.new('Player', *player_fields, keyword_init: true) do
   def unarmed_dmg
     return d(4) unless trained_in? :unarmed
 
-    # TOOD: this is comically OP
     case unarmed
     when 10 then d(6)
     when 11 then d(8)
-    when 11 then d(10)
-    when 12 then d('2d6')
-    when 13 then d('2d8')
-    when 14 then d('2d10')
-    when 15..99 then d('3d8')
+    when 12 then d(10)
+    when 13 then d('2d6')
+    when 14 then d('2d8')
+    when 15 then d('2d10')
+    when 16..99 then d('3d8')
     else; d(4)
     end
   end
