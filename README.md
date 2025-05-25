@@ -30,9 +30,9 @@ This project is comprised of two main parts:
 
 ### Scenes
 
-Everything in the game is a `Scene`. Scenes are stored on a stack, you can transition between them, and they carry state that is automatically persisted during the game and when saving+loading.
+Everything interactive in the game is a `Scene`. Scenes are stored on a stack, you can transition between them, and they carry state that is automatically persisted during the game and when saving+loading.
 
-Scenes are just classes extending from `Scene`. They will be instantiated by the engine (never directly!), can optionally take constructor parameters that are passed in during transition, and must define an `enter` method:
+Scenes are just classes extending from the `Scene` base. They will be instantiated by the engine in order to do some housekeeping, can optionally take constructor parameters that are passed in during transition, and must define an `enter` method:
 
 ```
 class Tavern < Scene
@@ -51,20 +51,20 @@ class Tavern < Scene
   end
 ```
 
-Scenes are run in a loop until they either finish or alter the stack via a transition such that a new scene is on top:
+The scenes's `enter` method is run in an endless loop until they either finish, or otherwise alter the stack via a transition such that a new scene is on top:
 
-* `finish_scene` pops the current scene. Note that it does not magically halt execution, so the current invocation of `enter` will continue.
-* `proceed_to(:scene_name)` pushes a new scene onto the stack. Use to 
-* `transition_to(:scene_name)` replaces the entire stack with just this scene. Useful for things like game over, returning to the main menu, moving to a new major area with its own game-loop, etc.
-* `replace_to(*next_scenes)` finishes the current scene and replaces it with one or more replacement scenes.
+* `finish_scene` pops the current scene. Note that it does not magically halt execution, so the current invocation of `enter` must then complete as usual.
+* `proceed_to(:scene_name)` pushes a new scene onto the stack. Use to move to the user to a new scene, expecting them to return to the current scene later.
+* `transition_to(:scene_name)` replaces the entire stack with just this scene. Useful for one-way transitions like game over, returning to the main menu, moving to a new major area with its own gameplay loop, etc.
+* `replace_to(*next_scenes)` finishes the current scene and replaces it with one or more replacement scenes. Basically just a convenience method for `finish` + `proceed_to` as this is a common need.
 
-Scene names are expected to be snake-case, and will be camel-cased to find the scene's class. Also, arguments after the name will be passed in-order into the new scene as constructor parameters.
+Scene names are expected to be snake-case, and will be camel-cased to find the scene's class. Also, arguments after the name in `proceed_to` and `transition_to` will be passed in-order into the new scene as constructor parameters, but this should be used sparingly (see State section below)
 
-You can see this style of scene management really only lends itself well to a tree of areas to explore, i.e. cycles could get confusing, which is kinda how old BBS games tended to work.
+You can see this style of scene management really only lends itself well to a tree of areas to explore where the user backtracks often, which is kinda how old BBS games tended to work. There is no cycle detection; multiple scenes of the same type run more or less independently.
 
 ### User Interaction
 
-Because it's a text-based game, dialogue trees, exposition text and gathering user input are given special treatment and are done with Ruby blocks:
+Because it's a text-based game, dialogue trees, exposition text and gathering user input are handled by `Scene` and are done with Ruby blocks:
 
 ```
 class TheForest < Scene
@@ -84,7 +84,7 @@ class TheForest < Scene
 end
 ```
 
-So `para` writes a paragraph to the screen, choices are built-up using `choice(key)` while the scene is run, and `choose!` forces the player to make a selection by pressing the key indicated by the `key` parameter. Upon choosing, the callback is run, which can then transition or even prompt for further choices. It's easy for complexity to spiral with this setup, so I would recommend breaking things into new scenes fairly aggressively. 
+So `para` writes a paragraph to the screen, choices are built-up using `choice(key)` while the scene is run, and `choose!` forces the player to make a selection by pressing the key indicated by the `key` parameter. Upon choosing, the callback is run, which can then transition or even prompt for further choices. It's easy for complexity+nesting to spiral with this setup, so I would recommend breaking things into new scenes fairly aggressively. 
 
 Other helpful UI methods include:
 * `line`, writes a single line to the window
@@ -94,11 +94,11 @@ Other helpful UI methods include:
 
 ### Dialogue
 
-Converation is done through `dialogue` and `say`, which are analagous to `para` and `choice` above, but formats it nicely as a back-and-forth conversation, and simply takes arbitrary names for the participants:
+Conversation is done through `dialogue` and `say`, which are analagous to `para` and `choice` above, but formats it nicely as a back-and-forth conversation, and simply takes arbitrary names for the participants:
 
 ```
 say :a, 'You looking for work?' do
-    dialogue 'Bob', 'I could do a job for $50'
+    dialogue 'Bob', 'I could do a job for $50 per day'
 
     if player.cash < 50
         say :d, "I don't have $50." do
@@ -112,32 +112,31 @@ end
 choose!
 ```
 
-
 ### State Management
 
-There are only four sources of persistent state:
+There are only four engine-provided holders of persistent state:
 
 * the player's character sheet and inventory
-* scene states
-* shared (global) state
-* the current scene stack
+* scene state variables setup with `state_variable :var_name`
+* shared (global) state: `state_variable :var_name, ..., shared: true`
+* the current scene stack -- not accessed directly, only through transitions
 
-Note that scene arguments are conspicuously missiong from the list. This means only scenes without arguments can be part of the stack on save. This works because complex scenes like interacting with vendors or fighting in combat aren't intended to be saved. 
+Note that scene arguments are conspicuously missing from the list. This means only scenes without arguments can be part of the stack on save. This works because complex scenes like interacting with vendors or fighting in combat aren't intended to be saved. 
 
 Every other part of the game is expected to store state through one of the four sources above. Ideal? No. Good design? Also no. But it works for me.
 
 ### Inventory
 
-Items can be important to the plot, have in-combat utility, or even usable outside of battle. Items are loaded from `data/items.csv` and have a few interesting attributes:
+Items can be important to the plot, equipped as a weapon, and be consumed in and out of battle. Items are loaded from `data/items.csv` and have a few attributes:
 
-* `id`: Items are referred to by this id.
-* `name`: How the item appears to the player.
+* `id`: Items are referred to by this id (symbolized for your convenience)
+* `name`: A short name which is presented to the player.
 * `value`: The cost of the item when purchased. Also used as the basis for the sale price.
-* `description`: Used when the player examines an item.
-* `effect_dice`: An optional dice expression that is rolled when the item is used. Doesn't support modifiers, just `{a}d{b}` where `b` is rolled `a` times.
+* `description`: Used as a longer description when the player examines an item.
+* `effect_dice`: An optional dice expression that is rolled when the item is used. Usage depends on the tag, details below. Doesn't support modifiers, just `{a}d{b}` where `b` is rolled `a` times.
 * `tags`: Pipe-delimited set of tags, e.g. `tech|grenade`, explained below:
 
-The tag system is used to organize items and determines usage:
+The tag system is used to organize items and determine usage:
 
 * `heal`: Usable in and out of battle, and roll their effect dice to allow the player to recover HP.
 * `plot`: Important for advancing the story and cannot be sold or used, and will not be stolen. Can only be removed from the inventory programmatically.
@@ -153,7 +152,7 @@ Also, a specific scene can be run on launch by passing it as an argument, along 
 
 `bundle exec ruby main.rb my_scene boolean:true int:42 string:whatever`
 
-And finally, if you like IRB, you can launch an interactive session by requiring `./main`, and the usual startup sequence will be skipped. Then you can interact with and set up game objects directly. Calling `main_loop` will turn control over to the engine, or `loop_once` will pump one event through the engine.
+And finally, if you like IRB, you can launch an interactive session by requiring `./main`, and the usual startup sequence will be skipped. Then you can interact with and set up game objects directly. Calling `main_loop` will turn control over to the engine, which by default loops until the scene stack is empty. For finer-grained control, `loop_once` can be used to visit the top-most scene once.
 
 ```
 $ bundle exec irb
