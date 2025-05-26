@@ -1,4 +1,5 @@
 require 'faye/websocket'
+require 'eventmachine'
 require 'thin'
 require 'json'
 
@@ -19,15 +20,11 @@ class WSBridge < BaseWindow
     @incoming = Thread::Queue.new
 
     ws.on :message do |event|
-      puts "received #{event.data}"
       @incoming.push(event.data.chomp)
     end
 
-    # ws.on :error do |_event|
-    #   @incoming.close
-    # end
-
     ws.on :close do |_event|
+      # signal client or network initiated close to the server by closing the queue
       puts 'incoming closed'
       @incoming.close
     end
@@ -109,7 +106,9 @@ class WSBridge < BaseWindow
   end
 
   def send(type, data = {})
-    @ws.send({ type:, data: }.to_json)
+    EM.next_tick do
+      @ws.send({ type:, data: }.to_json)
+    end
   end
 end
 
@@ -122,13 +121,15 @@ WSServer = lambda do |env|
 
     Thread.new do
       scenes.loop_once until scenes.game_over? || bridge.closed?
-      # TODO: not closing...
-      ws.close
+
+      # library is not thread-safe, must use eventmachine reactor thread
+      EM.next_tick do
+        ws.send({ type: 'quit', data: {} }.to_json)
+        ws.close
+      end
     end
 
-    # Return async Rack response
     ws.rack_response
-
   else
     # show something if browser hits this port
     [200, { 'Content-Type' => 'text/plain' }, ['HOW DO YOU KNOW MY LANGUAGE (expected websocket connection, but was a browser)']]

@@ -180,7 +180,6 @@ Tools like websocat can interact with it directly:
 
 ```
 $ websocat ws://localhost:8080
-$ websocat ws://localhost:8080
 {"type":"line","data":{"text":"LEGEND OF THE EVIL SPIX IV:","color":"primary"}}
 {"type":"line","data":{"text":"GHOSTS OF THE WASTES","color":"primary"}}
 {"type":"choices","data":{"choices":[{"key":"n","text":"Start a new game"},{"key":"l","text":"Load a saved game"},{"key":"q","text":"Quit"}]}}
