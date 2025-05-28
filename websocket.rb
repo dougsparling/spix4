@@ -119,10 +119,14 @@ WSServer = lambda do |env|
     scenes = SceneOwner.new(bridge)
     scenes.proceed_to :title
 
+    # TODO: to fix the close issue, maybe the solution is to fully
+    # integrate the game's event loop with EventMachine and not
+    # run anything outside the reactor. But Thread::Queue is the
+    # only shared data the thread touches...
     Thread.new do
       scenes.loop_once until scenes.game_over? || bridge.closed?
 
-      # library is not thread-safe, must use eventmachine reactor thread
+      # Immediately close the WebSocket
       EM.next_tick do
         ws.send({ type: 'quit', data: {} }.to_json)
         ws.close
@@ -131,8 +135,13 @@ WSServer = lambda do |env|
 
     ws.rack_response
   else
-    # show something if browser hits this port
-    [200, { 'Content-Type' => 'text/plain' }, ['HOW DO YOU KNOW MY LANGUAGE (expected websocket connection, but was a browser)']]
+    # Serve index.html for non-websocket connections to the root path
+    if env['PATH_INFO'] == '/' || env['PATH_INFO'] == '/index.html'
+      html_content = File.read('index.html')
+      [200, { 'Content-Type' => 'text/html' }, [html_content]]
+    else
+      [404, { 'Content-Type' => 'text/plain' }, ['Not Found']]
+    end
   end
 end
 
