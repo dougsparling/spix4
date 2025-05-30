@@ -105,6 +105,9 @@
         .dialogue-container.you {
             justify-content: flex-end;
         }
+        .dialogue-container.action {
+            justify-content: flex-start;
+        }
         .dialogue-bubble {
             background-color: #e0e0e0;
             border-radius: 10px;
@@ -115,6 +118,9 @@
         }
         .dialogue-container.you .dialogue-bubble {
             background-color: #dcf8c6;
+        }
+        .dialogue-container.action .dialogue-bubble {
+            background-color: #a8baf0;
         }
         .dialogue-name {
             font-weight: bold;
@@ -139,6 +145,11 @@
         const messagesDiv = document.getElementById('messages');
         const statusDiv = document.getElementById('status');
         const inputAreaDiv = document.getElementById('input-area'); // Get the new input area div
+
+        function appendMessageAndScroll(element) {
+            messagesDiv.appendChild(element);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
 
         function connectWebSocket() {
             statusDiv.textContent = 'Status: Connecting...';
@@ -171,7 +182,7 @@
                             const lineElement = document.createElement('div');
                             lineElement.className = messageData.color === 'secondary' ? 'line-secondary' : 'line-primary';
                             lineElement.textContent = messageData.text;
-                            messagesDiv.appendChild(lineElement);
+                            appendMessageAndScroll(lineElement);
                             break;
                         case 'prompt':
                             const promptContainer = document.createElement('div');
@@ -194,11 +205,7 @@
                                     websocket.send(response);
                                     promptInput.value = ''; // Clear input
                                     inputAreaDiv.innerHTML = ''; // Remove prompt after sending
-                                    // Optionally display the sent message
-                                    const sentMessageElement = document.createElement('div');
-                                    sentMessageElement.className = 'line-primary';
-                                    sentMessageElement.textContent = `> ${response}`;
-                                    messagesDiv.appendChild(sentMessageElement);
+                                    appendMessageAndScroll(sentMessageElement);
                                 }
                             });
                             inputAreaDiv.appendChild(promptContainer); // Add prompt to input area
@@ -211,15 +218,28 @@
                             messageData.choices.forEach(choice => {
                                 const choiceButton = document.createElement('button');
                                 choiceButton.className = 'choice-button';
-                                choiceButton.textContent = `${choice.key}: ${choice.text}`;
+                                choiceButton.textContent = choice.text;
                                 choiceButton.addEventListener('click', () => {
                                     websocket.send(choice.key);
                                     inputAreaDiv.innerHTML = ''; // Remove choices after selection
-                                    // Optionally display the sent choice
-                                    const sentChoiceElement = document.createElement('div');
-                                    sentChoiceElement.className = 'line-primary';
-                                    sentChoiceElement.textContent = `> ${choice.key}: ${choice.text}`;
-                                    messagesDiv.appendChild(sentChoiceElement);
+
+                                    // Display the sent choice as a dialogue bubble
+                                    const dialogueContainer = document.createElement('div');
+                                    dialogueContainer.className = 'dialogue-container action';
+
+                                    const dialogueBubble = document.createElement('div');
+                                    dialogueBubble.className = 'dialogue-bubble';
+
+                                    const dialogueText = document.createElement('div');
+                                    dialogueText.className = 'dialogue-text';
+                                    dialogueText.textContent = `${choice.text}`; // Only display the text, not key
+                                    dialogueBubble.appendChild(dialogueText);
+
+                                    dialogueContainer.appendChild(dialogueBubble);
+                                    appendMessageAndScroll(dialogueContainer);
+
+                                    // Add 'selected' class to the clicked button for styling
+                                    choiceButton.classList.add('selected');
                                 });
                                 choiceContainer.appendChild(choiceButton);
                             });
@@ -246,7 +266,7 @@
                             dialogueBubble.appendChild(dialogueText);
 
                             dialogueContainer.appendChild(dialogueBubble);
-                            messagesDiv.appendChild(dialogueContainer);
+                            appendMessageAndScroll(dialogueContainer);
                             break;
                         case 'pause':
                             // No-op for now, as per instructions

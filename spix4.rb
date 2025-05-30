@@ -284,7 +284,7 @@ class Dylan < Scene
         dialogue 'Dylan', "Right... anyway, as I saying, Hammond started this whole mess with his work prototyping the early Spix, and he must have kept detailed notes. Bring them to me, and I'll take it from there. Hammond's lab was supposedly underground in Assiniboine forest, though it's overrun with raiders and other nasties these days."
         dialogue 'Dylan', "Also, as you make progress toward our shared goals, report back to me periodically and I'll teach you whatever else I can to aid you."
 
-        para 'Speak to Dylan when you have obtained enough experience to level up', color: :secondary
+        line 'Speak to Dylan when you have obtained enough experience to level up', color: :secondary
         pause
 
         dialogue 'Dylan', "And finally, I'll tell the people here to tolerate your presence, but cause trouble and you'll end up face down on whatever road you came in on."
