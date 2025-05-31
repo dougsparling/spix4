@@ -70,8 +70,15 @@ class WSBridge < BaseWindow
     send(:choices, choices:)
 
     until @choices.empty?
-      c = receive_latest.downcase
-      next unless @choices.key?(c)
+      c = receive_latest&.downcase
+
+      # escape scene if user has disconnected (closure of queue causes nil to be dequeued)
+      raise 'game over' if c.nil?
+
+      unless @choices.key?(c)
+        line "invalid selection: #{c}"
+        next
+      end
 
       choice = @choices[c][1]
       @choices.clear
@@ -112,6 +119,12 @@ class WSBridge < BaseWindow
   end
 end
 
+SERVE_FILES = {
+  '/' => [200, { 'Content-Type' => 'text/html' }, [File.read('index.html')]],
+  '/websocket.js' => [200, { 'Content-Type' => 'text/javascript' }, [File.read('websocket.js')]],
+  '/websocket.css' => [200, { 'Content-Type' => 'text/css' }, [File.read('websocket.css')]]
+}
+
 WSServer = lambda do |env|
   if Faye::WebSocket.websocket?(env)
     ws = Faye::WebSocket.new(env)
@@ -124,7 +137,12 @@ WSServer = lambda do |env|
     # run anything outside the reactor. But Thread::Queue is the
     # only shared data the thread touches...
     Thread.new do
-      scenes.loop_once until scenes.game_over? || bridge.closed?
+      begin
+        scenes.loop_once until scenes.game_over? || bridge.closed?
+      rescue e
+        # if disconnection or any other error happens during a scene, escape the loop
+        puts "Caught #{e}"
+      end
 
       # Immediately close the WebSocket
       EM.next_tick do
@@ -135,13 +153,7 @@ WSServer = lambda do |env|
 
     ws.rack_response
   else
-    # Serve index.html for non-websocket connections to the root path
-    if env['PATH_INFO'] == '/' || env['PATH_INFO'] == '/index.html'
-      html_content = File.read('index.html')
-      [200, { 'Content-Type' => 'text/html' }, [html_content]]
-    else
-      [404, { 'Content-Type' => 'text/plain' }, ['Not Found']]
-    end
+    SERVE_FILES[env['PATH_INFO']] || [404, { 'Content-Type' => 'text/plain' }, ['Not Found']]
   end
 end
 
