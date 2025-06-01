@@ -112,7 +112,7 @@ class IntroTownCasual < Scene
     pause
     para 'You plant your boots on the porch of what must pass for a tavern in this hovel, grab a shovel leaning against the railing, and cry out, "Dylan! Show yourself!"'
     pause
-    para 'After a moment, an absolute beast of a man kicks the door open, and you hop backwards in surprise. You sense this isn\'t who you\'re looking for'
+    para 'After a moment, an absolute beast of a man kicks the door open, and you hop backwards in surprise. You sense this isn\'t who you\'re looking for.'
     pause
     dialogue bruiser.name,
              "Who the hell are you? Eh, won't matter anyway once I'm scraping you off the bottom of me shoe."

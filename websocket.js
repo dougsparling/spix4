@@ -189,6 +189,7 @@ function connectWebSocket() {
         statusDiv.textContent = 'Status: Disconnected';
         statusDiv.className = 'status disconnected';
         messagesDiv.innerHTML = 'disconnected'; // Display "disconnected" on disconnect
+        inputAreaDiv.innerHTML = ''; // Clear input options on disconnect
         // Attempt to reconnect after a delay
         if (!reconnectInterval) {
             reconnectInterval = setInterval(connectWebSocket, 3000); // Try every 3 seconds

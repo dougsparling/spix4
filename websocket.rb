@@ -139,9 +139,9 @@ WSServer = lambda do |env|
     Thread.new do
       begin
         scenes.loop_once until scenes.game_over? || bridge.closed?
-      rescue e
+      rescue  => e
         # if disconnection or any other error happens during a scene, escape the loop
-        puts "Caught #{e}"
+        puts "Caught #{e}, exiting game loop"
       end
 
       # Immediately close the WebSocket
