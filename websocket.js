@@ -52,10 +52,6 @@ function processMessage(messageString) {
                         websocket.send(response);
                         promptInput.value = ''; // Clear input
                         inputAreaDiv.innerHTML = ''; // Remove prompt after sending
-                        // Note: sentMessageElement is not defined here, this might be a bug from previous code.
-                        // If you want to display the sent message, you'll need to create an element for it.
-                        // For now, I'll comment it out to avoid an error.
-                        // appendMessageAndScroll(sentMessageElement);
                     }
                 });
                 inputAreaDiv.appendChild(promptContainer); // Add prompt to input area
@@ -211,8 +207,8 @@ function connectWebSocket() {
 function continueMessages() {
     isPaused = false;
     inputAreaDiv.innerHTML = ''; // Clear the continue button
-    console.log('Resuming messages. Processing queue...');
-    while (messageQueue.length > 0) {
+    console.log('Resuming messages. Processing queue until next pause...');
+    while (messageQueue.length > 0 && !isPaused) {
         processMessage(messageQueue.shift());
     }
     // Re-focus input if a prompt was displayed before pause
