@@ -3,11 +3,12 @@ require 'json'
 
 class SceneOwner
   attr_accessor :player
-  attr_reader :window, :state
+  attr_reader :window, :state, :storage_path
 
-  def initialize(window)
+  def initialize(window, storage_path = __dir__)
     @scenes = []
     @window = window
+    @storage_path = storage_path
     @state = {}
     @player = nil
   end
@@ -39,10 +40,10 @@ class SceneOwner
     end
   end
 
-  def proceed_to(next_scene, *args)
+  def proceed_to(next_scene, *)
     # e.g. :next_scene -> NextScene class
     scene_type = Object.const_get(next_scene.to_s.split('_').collect(&:capitalize).join)
-    scene = scene_type.new(*args)
+    scene = scene_type.new(*)
     # TODO: kinda nasty?
     scene.owner = self
     @scenes.push(scene)
@@ -63,7 +64,6 @@ class SceneOwner
   end
 
   def hydrate(hash)
-    puts hash
     @state = hash[:scene_state]
     @player = Player.hydrate(hash[:player])
     # TODO: doesn't handle scene args, but okay for now
@@ -76,7 +76,7 @@ class Scene
   attr_accessor :owner
 
   def_delegators :window, :choice, :dialogue, :say, :choose!, :line, :para, :newline, :pause, :blank, :prompt
-  def_delegators :owner, :proceed_to, :replace_to, :transition_to, :finish_scene
+  def_delegators :owner, :proceed_to, :replace_to, :transition_to, :finish_scene, :storage_path
 
   def window
     @owner.window
@@ -115,6 +115,13 @@ class Scene
 
     yield
     @did_first_on_enter = true
+  end
+
+  # builds a directory path to player-specific storage, ensuring the directory exists
+  def ensure_path(suffix)
+    path = File.join(storage_path, suffix)
+    FileUtils.makedirs(path)
+    path
   end
 
   def to_s
@@ -171,7 +178,8 @@ class Save < Scene
     finish_scene
 
     para @msg
-    save_file = File.join(__dir__, 'saves', player.name.downcase)
+    save_path = ensure_path('saves')
+    save_file = File.join(save_path, player.name.downcase)
     File.write(save_file, owner.dehydrate.to_json, mode: 'w')
     pause
   end
@@ -179,7 +187,7 @@ end
 
 class Load < Scene
   def enter
-    saves = Dir[File.join(__dir__, 'saves', '**')]
+    saves = Dir[File.join(ensure_path('saves'), '**')]
     if saves.empty?
       para 'No saves found!'
       pause

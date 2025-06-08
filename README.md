@@ -174,7 +174,7 @@ My scene begins blah blah
 
 The game can also be launched as a server that listens for websocket connections:
 
-`PORT=8080 bundle exec ruby websocket.rb`
+`PORT=8080 bundle exec thin start`
 
 Tools like websocat can interact with it directly:
 

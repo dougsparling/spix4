@@ -1,6 +1,6 @@
 begin
   require 'pry'
-rescue
+rescue StandardError
   puts "Ignoring missing 'pry' gem"
 end
 

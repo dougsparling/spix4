@@ -127,23 +127,26 @@ class WSServer
   end
 
   def call(env)
-    return @app.call(env) unless Faye::WebSocket.websocket?(env)
+    identity = env['rack.session'][:identity]
+    player_storage = File.join(__dir__, 'storage', identity)
+    return @app.call(env) unless Faye::WebSocket.websocket?(env) && identity
 
     ws = Faye::WebSocket.new(env, nil, { ping: KEEPALIVE_TIME })
     bridge = WSBridge.new(ws)
-    scenes = SceneOwner.new(bridge)
-    scenes.proceed_to :title
 
     # TODO: to fix the close issue, maybe the solution is to fully
     # integrate the game's event loop with EventMachine and not
     # run anything outside the reactor. But Thread::Queue is the
     # only shared data the thread touches...
     Thread.new do
+      scenes = SceneOwner.new(bridge, player_storage)
+      scenes.proceed_to :title
       begin
         scenes.loop_once until scenes.game_over? || bridge.closed?
       rescue StandardError => e
         # if disconnection or any other error happens during a scene, escape the loop
         puts "Caught #{e}, exiting game loop"
+        puts e.backtrace
       end
 
       # Immediately close the WebSocket

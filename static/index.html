@@ -13,8 +13,12 @@
 
     <script src="websocket.js"></script>
     <script>
-        // Initial connection attempt
-        connectWebSocket();
+        if (!document.cookie) {
+            window.location.href = '/new';
+        } else {
+            // have session, let's go!
+            connectWebSocket();
+        }
     </script>
 </body>
 </html>
