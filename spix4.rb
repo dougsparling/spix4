@@ -1424,8 +1424,8 @@ class Caravan < Scene
 
       loot_spec = DropSpec.new({ caravan_meal: 3.0, first_aid: 2, rifle: 0.2, frag: 0.1 })
 
-      choice :m, 'Attempt to brute force the lock (martial - 3)' do
-        self_succ, self_result = player.skill_check(recorder, :martial, modifier: -3)
+      choice :m, 'Attempt to brute force the lock (martial - 1)' do
+        self_succ, self_result = player.skill_check(recorder, :martial, modifier: -1)
         if self_succ
           para 'You successfully force the lock! You quickly loot the trunk:'
           player.inventory.add_all(window, loot_spec.roll)
@@ -1440,8 +1440,8 @@ class Caravan < Scene
       end
 
       if player.trained_in?(:tech)
-        choice :t, 'Attempt to pick the lock (tech - 1)' do
-          self_succ, self_result = player.skill_check(recorder, :tech, modifier: -1)
+        choice :t, 'Attempt to pick the lock (tech + 1)' do
+          self_succ, self_result = player.skill_check(recorder, :tech, modifier: +1)
           if self_succ
             para 'Little click on one, nothing on two... and there we have it, folks.'
             para 'You swing the trunk open and get to looting.'
