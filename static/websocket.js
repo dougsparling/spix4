@@ -1,4 +1,4 @@
-const websocketUrl = 'ws://localhost:8080';
+const websocketUrl = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}`;
 let websocket;
 let reconnectInterval;
 const messagesDiv = document.getElementById('messages');

@@ -119,15 +119,17 @@ class WSBridge < BaseWindow
   end
 end
 
-SERVE_FILES = {
-  '/' => [200, { 'Content-Type' => 'text/html' }, [File.read('index.html')]],
-  '/websocket.js' => [200, { 'Content-Type' => 'text/javascript' }, [File.read('websocket.js')]],
-  '/websocket.css' => [200, { 'Content-Type' => 'text/css' }, [File.read('websocket.css')]]
-}
+class WSServer
+  KEEPALIVE_TIME = 15 # seconds
 
-WSServer = lambda do |env|
-  if Faye::WebSocket.websocket?(env)
-    ws = Faye::WebSocket.new(env)
+  def initialize(app)
+    @app = app
+  end
+
+  def call(env)
+    return @app.call(env) unless Faye::WebSocket.websocket?(env)
+
+    ws = Faye::WebSocket.new(env, nil, { ping: KEEPALIVE_TIME })
     bridge = WSBridge.new(ws)
     scenes = SceneOwner.new(bridge)
     scenes.proceed_to :title
@@ -152,11 +154,5 @@ WSServer = lambda do |env|
     end
 
     ws.rack_response
-  else
-    SERVE_FILES[env['PATH_INFO']] || [404, { 'Content-Type' => 'text/plain' }, ['Not Found']]
   end
 end
-
-# yeehaw
-Faye::WebSocket.load_adapter('thin')
-Rack::Handler.get('thin').run(WSServer)

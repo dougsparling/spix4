@@ -15,11 +15,12 @@ RUN bundle install --jobs $(nproc) --retry 3
 # Stage 2: Build Application
 FROM ruby:3.4.4-slim-bullseye
 WORKDIR /app
-ENV RACK_ENV=production
 
 # Copy gems from the previous stage
 COPY --from=gem_install_stage /usr/local/bundle/ /usr/local/bundle/
 
-COPY . .
+ADD static /app/static
+ADD data /app/data
+COPY Gemfile* *.rb config.ru ./
 EXPOSE 8080
-CMD ["bundle", "exec", "ruby", "websocket.rb"]
+CMD ["bundle", "exec", "thin", "start", "-e", "production"]
