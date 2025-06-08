@@ -59,7 +59,7 @@ class WSBridge < BaseWindow
   def choose!(action = nil)
     # special case for immediate actions
     unless action.nil?
-      immediate = @choices.key?(c)[1]
+      immediate = @choices.key?(action)[1]
       @choices.clear
       immediate.call
       return
@@ -139,7 +139,7 @@ WSServer = lambda do |env|
     Thread.new do
       begin
         scenes.loop_once until scenes.game_over? || bridge.closed?
-      rescue  => e
+      rescue StandardError => e
         # if disconnection or any other error happens during a scene, escape the loop
         puts "Caught #{e}, exiting game loop"
       end
