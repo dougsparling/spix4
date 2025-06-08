@@ -186,6 +186,18 @@ $ websocat ws://localhost:8080
 q
 ```
 
+### Setting up dev environment
+
+I use RVM on macOS, which doesn't quite work out of the box since Ruby needs to be compiled from source.
+
+Here's the recipe assuming Homebrew + RVM are installed:
+
+```
+$ brew install openssl-dev
+$ rvm install ruby-3.4.4 --with-openssl-dir=$(brew --prefix openssl@3)
+$ bundle install
+```
+
 ### TODO
 
 * BBS themed web interface: monospace font, image of old PC, slow text loading, etc.
