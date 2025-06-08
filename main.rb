@@ -1,4 +1,8 @@
-require 'pry'
+begin
+  require 'pry'
+rescue
+  puts "Ignoring missing 'pry' gem"
+end
 
 require './scene'
 require './render'
@@ -15,6 +19,7 @@ return unless $PROGRAM_NAME == __FILE__
 window = if ENV['WINDOW']&.downcase == 'plain'
            PlainWindow.new
          else
+           require './curses'
            CursesWindow.new
          end
 

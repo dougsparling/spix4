@@ -159,4 +159,4 @@ end
 
 # yeehaw
 Faye::WebSocket.load_adapter('thin')
-Rack::Handler.get('thin').run(WSServer, port: ENV['port'].to_i || 8080)
+Rack::Handler.get('thin').run(WSServer)
