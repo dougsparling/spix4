@@ -185,3 +185,14 @@ $ websocat ws://localhost:8080
 {"type":"choices","data":{"choices":[{"key":"n","text":"Start a new game"},{"key":"l","text":"Load a saved game"},{"key":"q","text":"Quit"}]}}
 q
 ```
+
+### TODO
+
+* BBS themed web interface: monospace font, image of old PC, slow text loading, etc.
+* stateful server w/ cookie-based caching of running game with timeout?
+  * also separate save/load list based on cookie
+* smooth scrolling on message process
+* maybe there should be a game loop on the received message queue instead of immediate processing?
+  * cleans up pausing and allows for animations, delays, etc.
+* integrate game loop with eventmachine
+* actually finish the game lol
