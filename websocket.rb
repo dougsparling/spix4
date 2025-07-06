@@ -59,21 +59,17 @@ class WSBridge < BaseWindow
   def choose!(action = nil)
     # special case for immediate actions
     unless action.nil?
-      immediate = @choices.key?(action)[1]
+      immediate = @choices[action.to_s[0].downcase][1]
       @choices.clear
       immediate.call
       return
     end
 
-    choices = @choices.map { |key, choice| { key:, text: choice[0] } }
-
-    send(:choices, choices:)
-
     until @choices.empty?
+      # choice callback itself might present a new set of choices; loop until empty
+      choices = @choices.map { |key, choice| { key:, text: choice[0] } }
+      send(:choices, choices:)
       c = receive_latest&.downcase
-
-      # escape scene if user has disconnected (closure of queue causes nil to be dequeued)
-      raise 'game over' if c.nil?
 
       unless @choices.key?(c)
         line "invalid selection: #{c}"
@@ -109,7 +105,12 @@ class WSBridge < BaseWindow
 
   def receive_latest
     @incoming.clear
-    @incoming.pop
+    latest = @incoming.pop
+
+    # escape scene if user has disconnected (closure of queue causes nil to be dequeued)
+    raise 'queue closed during receive_latest' if latest.nil?
+
+    latest
   end
 
   def send(type, data = {})
@@ -127,9 +128,12 @@ class WSServer
   end
 
   def call(env)
+    return @app.call(env) unless Faye::WebSocket.websocket?(env)
+
     identity = env['rack.session'][:identity]
+    raise 'unauthenticated WS request' unless identity
+
     player_storage = File.join(__dir__, 'storage', identity)
-    return @app.call(env) unless Faye::WebSocket.websocket?(env) && identity
 
     ws = Faye::WebSocket.new(env, nil, { ping: KEEPALIVE_TIME })
     bridge = WSBridge.new(ws)

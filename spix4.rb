@@ -1392,7 +1392,7 @@ class Caravan < Scene
 
       pause
     when 2..3
-      para 'You find a settlement, and its inhabitants seem eager to trade.'
+      para 'You find a settlement, and its inhabitants seem eager to trade. They are also numerous and heavily armed, and are unlikely to tolerate any funny business.'
       pause
       proceed_to :barter,
                  'waster',
@@ -1486,6 +1486,7 @@ class Caravan < Scene
     para 'You walk alongside the wagon, where Dylan is perched up on the seat. He acknowledges you with a nod.'
     choice 'Discuss the progress of the caravan' do
       if player.ready_to_level_up?
+        # TODO: this section is bugged -- does nothing after discuss progress
         para 'You discuss the challenges encountered and what lies ahead.'
         dialogue 'Dylan', "We've come far, but there is still much you don't know about these roads. I'd be happy to share."
         choice :l, 'Level up!' do

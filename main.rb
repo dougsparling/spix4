@@ -1,7 +1,7 @@
 begin
-  require 'pry'
+  require 'debug'
 rescue StandardError
-  puts "Ignoring missing 'pry' gem"
+  puts "Ignoring missing 'debug' gem"
 end
 
 require './scene'
